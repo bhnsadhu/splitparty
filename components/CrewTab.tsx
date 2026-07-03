@@ -94,7 +94,12 @@ export default function CrewTab({
                   <Avatar name={m.name} />
                   <div className="min-w-0 flex-1">
                     <p className="font-bold text-ink">{m.name}</p>
-                    <p className="text-xs text-faint">knocked {timeAgo(m.joinedAt)} ago</p>
+                    <p className="text-xs text-faint">
+                      knocked{" "}
+                      {timeAgo(m.joinedAt) === "now"
+                        ? "just now"
+                        : `${timeAgo(m.joinedAt)} ago`}
+                    </p>
                   </div>
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-2">

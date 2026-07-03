@@ -1,36 +1,45 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SplitParty
 
-## Getting Started
+**Split the damage.** Group-expense splitting for events — log who paid for what,
+SplitParty nets it out and squares everyone up in the fewest payments possible.
 
-First, run the development server:
+No accounts. A 5-character party code is the only door. Host approves who gets in.
+
+## How it works
+
+- **Start a party** → you get a code + shareable link (`/join?code=XXXXX`).
+- **Friends join** → they wait "at the door" until the host lets them in.
+- **Anyone logs expenses** → split evenly across everyone currently in.
+- **Settle up** → minimal-transfer plan (greedy debt simplification, ≤ n−1
+  payments, exact to the cent). "Alex owes Priya $12.50."
+- **Trust loop** → paying someone back creates a *pending* claim only the
+  receiver can confirm. Confirmed → settled for everyone. Rejected → back to
+  outstanding. Nothing settles silently.
+
+## Stack
+
+- Next.js (App Router) + Tailwind v4, dark-first, mobile-first
+- Supabase Postgres (project `splitparty`), all money in integer cents
+- All DB access via server API routes; the Supabase key never ships to browsers
+- Identity = `localStorage` device id sent as `x-device-id` (no login)
+- Live-ish updates via 3s visibility-aware polling
+
+## Ledger rules (lib/settle.ts)
+
+- Expense shares always sum **exactly** to the expense (leftover pennies rotate
+  deterministically by expense id — nobody systematically eats the remainder).
+- Only **confirmed** settlements move balances.
+- Members who leave/are removed keep their paid expenses + confirmed history
+  ("ghosts") but take no share; their pending claims are deleted.
+- All clients see the identical plan (deterministic sort).
+
+## Dev
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev          # needs .env.local → SUPABASE_URL, SUPABASE_KEY
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Tests (scratch scripts, run against a local server):
+- settle-test.ts — 17 invariant checks incl. 200-scenario fuzz
+- e2e.sh — 39-step full lifecycle (join/approve/expense/settle/confirm/leave)
