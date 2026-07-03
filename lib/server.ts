@@ -17,7 +17,7 @@ export function jsonError(status: number, error: string) {
   return NextResponse.json({ error }, { status });
 }
 
-/** Anonymous device identity — the only credential this app has. */
+/** Anonymous device identity, the only credential this app has. */
 export function deviceIdFrom(req: Request): string | null {
   const id = req.headers.get("x-device-id");
   if (!id || !/^[A-Za-z0-9-]{10,64}$/.test(id)) return null;
@@ -32,7 +32,7 @@ export async function readJson<T>(req: Request): Promise<T | null> {
   }
 }
 
-// No 0/O, 1/I/L — codes get read out loud across a noisy room.
+// No 0/O, 1/I/L, codes get read out loud across a noisy room.
 const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 export const CODE_LENGTH = 5;
 
@@ -77,7 +77,7 @@ export async function memberFor(
   return (data as MemberRow) ?? null;
 }
 
-/** Pending (unconfirmed) settlements vanish when a member exits — confirmed history never does. */
+/** Pending (unconfirmed) settlements vanish when a member exits. Confirmed history never does. */
 export async function deletePendingSettlementsInvolving(
   eventId: string,
   memberId: string,

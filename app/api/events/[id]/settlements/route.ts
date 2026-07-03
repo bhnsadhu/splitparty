@@ -8,7 +8,7 @@ import {
   validAmount,
 } from "@/lib/server";
 
-/** "I paid [name] $X" — creates a PENDING claim only the receiver can confirm. */
+/** "I paid [name] $X" creates a PENDING claim only the receiver can confirm. */
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -34,14 +34,14 @@ export async function POST(
     .eq("id", body.toMemberId)
     .eq("event_id", eventId)
     .maybeSingle();
-  // You can pay back someone who already left — their ledger line survives
+  // You can pay back someone who already left, their ledger line survives
   // until it's square. Only never-approved members are off the table.
   if (!receiver || receiver.status === "pending" || receiver.status === "denied") {
     return jsonError(400, "They're not part of this event yet.");
   }
 
   // Round-trip the created row so a silently dropped insert can never
-  // masquerade as success — this claim is money, it must be provably stored.
+  // masquerade as success. This claim is money, it must be provably stored.
   const { data, error } = await db()
     .from("settlements")
     .insert({

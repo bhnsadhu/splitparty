@@ -77,9 +77,9 @@ export default function SettleTab({
       <section
         className={`rounded-3xl border p-5 ${
           net > 0
-            ? "border-lime/40 bg-lime/10"
+            ? "border-blue/40 bg-blue/10"
             : net < 0
-              ? "border-pink/40 bg-pink/10"
+              ? "border-rose/40 bg-rose/10"
               : "border-line bg-surface"
         }`}
       >
@@ -88,7 +88,7 @@ export default function SettleTab({
         </p>
         <p
           className={`mt-1 font-display text-3xl font-black tracking-tight ${
-            net > 0 ? "text-lime" : net < 0 ? "text-pink" : "text-ink"
+            net > 0 ? "text-blue" : net < 0 ? "text-rose" : "text-ink"
           }`}
         >
           {net > 0 ? (
@@ -123,11 +123,11 @@ export default function SettleTab({
               return (
                 <div
                   key={s.id}
-                  className="rounded-2xl border border-pink/40 bg-surface p-4"
+                  className="rounded-2xl border border-rose/40 bg-surface p-4"
                 >
                   <p className="text-sm text-ink">
                     <Name id={s.from} /> says they paid you{" "}
-                    <Money cents={s.amountCents} className="font-bold text-lime" />
+                    <Money cents={s.amountCents} className="font-bold text-sky" />
                     <span className="text-faint"> · {timeAgo(s.createdAt)}</span>
                   </p>
                   {owed !== s.amountCents && (
@@ -163,11 +163,11 @@ export default function SettleTab({
 
       {/* ---- All square moment ---- */}
       {allSquare && (
-        <section className="-rotate-1 rounded-3xl bg-lime p-6 text-void">
+        <section className="-rotate-1 rounded-3xl bg-blue p-6 text-void">
           <p className="font-display text-3xl font-black leading-tight">
             EVERYONE&rsquo;S SQUARE.
           </p>
-          <p className="mt-2 text-sm font-bold opacity-70">
+          <p className="mt-2 text-sm font-bold">
             {formatMoney(state.totalSpentCents)} of damage, fully settled.
             Screenshot this for the group chat.
           </p>
@@ -180,7 +180,7 @@ export default function SettleTab({
           <SectionTitle>
             The square-up plan{" "}
             <span className="font-normal normal-case text-faint">
-              — {state.transfers.length}{" "}
+              · {state.transfers.length}{" "}
               {state.transfers.length === 1 ? "payment" : "payments"}, the fewest
               possible
             </span>
@@ -284,16 +284,16 @@ function PlanRow({
   return (
     <div
       className={`rounded-2xl border px-4 py-3 ${
-        iOwe ? "border-pink/40 bg-surface" : owedMe ? "border-lime/30 bg-surface" : "border-line bg-surface"
+        iOwe ? "border-rose/40 bg-surface" : owedMe ? "border-blue/30 bg-surface" : "border-line bg-surface"
       }`}
     >
       <div className="flex items-center gap-3">
         <p className="min-w-0 flex-1 text-sm text-dim">
-          <span className={`font-bold ${iOwe ? "text-pink" : "text-ink"}`}>
+          <span className={`font-bold ${iOwe ? "text-rose" : "text-ink"}`}>
             {name(t.from)}
           </span>{" "}
           {iOwe ? "owe" : "owes"}{" "}
-          <span className={`font-bold ${owedMe ? "text-lime" : "text-ink"}`}>
+          <span className={`font-bold ${owedMe ? "text-sky" : "text-ink"}`}>
             {name(t.to)}
           </span>
         </p>
@@ -329,13 +329,13 @@ function HistoryRow({
         <span className="font-bold">{name(s.from)}</span> paid{" "}
         <span className="font-bold">{name(s.to)}</span>{" "}
         <Money cents={s.amountCents} className="font-bold" />
-        {rejected ? " — declined" : ""}
+        {rejected ? ", declined" : ""}
         <span className="text-faint">
           {" "}· {timeAgo(s.resolvedAt ?? s.createdAt)}
         </span>
       </span>
       <span
-        className={`shrink-0 font-bold ${rejected ? "text-danger" : "text-lime"}`}
+        className={`shrink-0 font-bold ${rejected ? "text-danger" : "text-blue"}`}
         aria-label={rejected ? "declined" : "settled"}
       >
         {rejected ? "✕" : "✓"}
@@ -413,7 +413,7 @@ function RecordPaymentSheet({
                 type="button"
                 onClick={() => setTo(m.id)}
                 className={`rounded-full px-4 py-2 text-sm font-bold transition-colors ${
-                  to === m.id ? "bg-lime text-void" : "border border-line text-dim"
+                  to === m.id ? "bg-blue text-void" : "border border-line text-dim"
                 }`}
               >
                 {m.name}
@@ -422,7 +422,7 @@ function RecordPaymentSheet({
             ))}
           </div>
         </Field>
-        <Field label="How much (cash, Venmo, whatever — this just records it)">
+        <Field label="How much (cash, Venmo, whatever, this just records it)">
           <div className="relative">
             <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-lg font-bold text-faint">
               $
@@ -443,10 +443,10 @@ function RecordPaymentSheet({
         {cents && to && owed > 0 && cents > owed && (
           <p className="text-sm text-sky">
             That&rsquo;s more than the {formatMoney(owed)} the plan says you owe{" "}
-            {toName} — still fine, it all nets out once they confirm.
+            {toName}. Still fine, it all nets out once they confirm.
           </p>
         )}
-        <p className="text-xs text-faint">
+        <p className="text-xs text-dim">
           Nothing settles until {toName ?? "they"} confirms they got it.
         </p>
         <Button full disabled={busy || !cents || !to}>

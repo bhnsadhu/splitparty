@@ -108,7 +108,7 @@ function ActiveEvent({
           </h1>
           <button
             onClick={() => setTicketOpen(true)}
-            className="shrink-0 rounded-full bg-lime px-3 py-1.5 font-display text-xs font-black tracking-[0.15em] text-void transition-transform active:scale-95"
+            className="shrink-0 rounded-full bg-blue px-3 py-1.5 font-display text-xs font-black tracking-[0.15em] text-void transition-transform active:scale-95"
           >
             {state.event.code}
           </button>
@@ -175,17 +175,17 @@ function TabButton({
       className="relative flex h-16 flex-col items-center justify-center"
     >
       <span
-        className={`font-display text-sm font-bold ${active ? "text-lime" : "text-dim"}`}
+        className={`font-display text-sm font-bold ${active ? "text-blue" : "text-dim"}`}
       >
         {label}
         {badge > 0 && (
-          <span className="pulse-dot absolute -right-4 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-pink px-1 text-xs font-black text-void">
+          <span className="pulse-dot absolute -right-4 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose px-1 text-xs font-black text-void">
             {badge}
           </span>
         )}
       </span>
       <span
-        className={`mt-1 h-1 w-8 rounded-full transition-colors ${active ? "bg-lime" : "bg-transparent"}`}
+        className={`mt-1 h-1 w-8 rounded-full transition-colors ${active ? "bg-blue" : "bg-transparent"}`}
       />
     </button>
   );
@@ -238,7 +238,7 @@ function RestrictedView({
   const copy: Record<string, { title: string; body: string }> = {
     pending: {
       title: "You're at the door.",
-      body: `Hang tight — ${state.hostName} has to let you in. This screen updates itself, no refreshing needed.`,
+      body: `Hang tight, ${state.hostName} has to let you in. This screen updates itself, no refreshing needed.`,
     },
     left: {
       title: "You left this party.",
@@ -266,7 +266,7 @@ function RestrictedView({
             <div key={p.id} className="rounded-2xl border border-line bg-surface p-4">
               <p className="text-sm text-ink">
                 <span className="font-bold">{p.fromName}</span> says they paid you{" "}
-                <Money cents={p.amountCents} className="font-bold text-lime" />
+                <Money cents={p.amountCents} className="font-bold text-sky" />
               </p>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <Button small disabled={busy} onClick={() => resolve(p.id, "confirm")}>

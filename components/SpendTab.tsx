@@ -29,10 +29,10 @@ export default function SpendTab({
       {state.pendingForMe > 0 && (
         <button
           onClick={goSettle}
-          className="mb-4 w-full rounded-2xl border border-pink/40 bg-pink/10 px-4 py-3 text-left text-sm font-bold text-pink"
+          className="mb-4 w-full rounded-2xl border border-rose/40 bg-rose/10 px-4 py-3 text-left text-sm font-bold text-rose"
         >
           {state.pendingForMe === 1
-            ? "Someone says they paid you back — confirm it →"
+            ? "Someone says they paid you back, confirm it →"
             : `${state.pendingForMe} payments waiting on your confirmation →`}
         </button>
       )}
@@ -56,7 +56,7 @@ export default function SpendTab({
 
       {state.expenses.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-line px-5 py-8 text-center text-dim">
-          Nothing logged yet. Someone definitely bought something — get it in
+          Nothing logged yet. Someone definitely bought something. Get it in
           here before they forget the number.
         </p>
       ) : (
@@ -176,7 +176,7 @@ function AddExpenseSheet({
                 onClick={() => setPaidBy(m.id)}
                 className={`rounded-full px-4 py-2 text-sm font-bold transition-colors ${
                   payerId === m.id
-                    ? "bg-lime text-void"
+                    ? "bg-blue text-void"
                     : "border border-line text-dim"
                 }`}
               >
@@ -191,7 +191,7 @@ function AddExpenseSheet({
           </p>
         )}
         <Button full disabled={busy || !cents || !label.trim()}>
-          {busy ? "Logging…" : cents ? `Log it — $${(cents / 100).toFixed(2)}` : "Log it"}
+          {busy ? "Logging…" : cents ? `Log it, $${(cents / 100).toFixed(2)}` : "Log it"}
         </Button>
       </form>
     </Sheet>

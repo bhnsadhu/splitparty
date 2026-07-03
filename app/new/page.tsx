@@ -42,7 +42,7 @@ export default function NewEvent() {
         Start a party
       </h1>
       <p className="mt-2 text-dim">
-        You&rsquo;ll get a code. Anyone with the code can ask in — you decide who
+        You&rsquo;ll get a code. Anyone with the code can ask in. You decide who
         gets through the door.
       </p>
 

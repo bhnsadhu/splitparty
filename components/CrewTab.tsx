@@ -135,7 +135,7 @@ export default function CrewTab({
       {/* ---- Roster ---- */}
       <section>
         <h3 className="mb-3 text-sm font-bold uppercase tracking-widest text-faint">
-          The crew — {roster.filter((m) => m.status === "active").length} in
+          The crew · {roster.filter((m) => m.status === "active").length} in
         </h3>
         <ul className="space-y-1">
           {roster.map((m) => {
@@ -163,9 +163,9 @@ export default function CrewTab({
                     </p>
                   </div>
                   {net > 0 ? (
-                    <Chip tone="lime">+{formatMoney(net)}</Chip>
+                    <Chip tone="blue">+{formatMoney(net)}</Chip>
                   ) : net < 0 ? (
-                    <Chip tone="pink">−{formatMoney(-net)}</Chip>
+                    <Chip tone="rose">-{formatMoney(-net)}</Chip>
                   ) : (
                     <Chip tone="dim">square</Chip>
                   )}

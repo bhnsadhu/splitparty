@@ -21,7 +21,7 @@ export async function POST(
   // Every branch guards on status='pending' so a double-tap or a race between
   // two phones resolves to exactly one outcome.
   if (action === "confirm" || action === "reject") {
-    // Receiver-only. Works even if the receiver has left — money owed to them
+    // Receiver-only. Works even if the receiver has left, money owed to them
     // is still theirs to confirm.
     const { data, error } = await db()
       .from("settlements")

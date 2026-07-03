@@ -5,7 +5,7 @@ import type { MyEventSummary } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-/** Everything this device belongs to — powers the My Events home screen. */
+/** Everything this device belongs to. Powers the My Events home screen. */
 export async function GET(req: Request) {
   const deviceId = deviceIdFrom(req);
   if (!deviceId) return jsonError(401, "Missing device identity.");

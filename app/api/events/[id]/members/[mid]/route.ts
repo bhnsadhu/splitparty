@@ -69,7 +69,7 @@ export async function POST(
   if (action === "leave") {
     if (target.id !== me.id) return jsonError(403, "You can only remove yourself.");
     if (me.is_host) {
-      return jsonError(400, "Hosts can't leave their own party — it would strand everyone.");
+      return jsonError(400, "Hosts can't leave their own party, it would strand everyone.");
     }
     if (me.status !== "active" && me.status !== "pending") {
       return jsonError(409, "You're already out.");

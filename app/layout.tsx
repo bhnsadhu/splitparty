@@ -15,13 +15,13 @@ const grotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "SplitParty — split the damage",
+  title: "SplitParty, split the damage",
   description:
     "Log who paid for what. SplitParty does the math and squares everyone up in the fewest payments possible. No accounts, just a code.",
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0c0c12",
+  themeColor: "#19191d",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",

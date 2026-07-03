@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui";
 
 /**
- * The signature moment: a lime ticket stub with the join code.
+ * The signature moment: a blue ticket stub with the join code.
  * Built to be screenshotted and dropped into a group chat.
  */
 export default function Ticket({
@@ -32,7 +32,7 @@ export default function Ticket({
       try {
         await navigator.share({
           title: "SplitParty",
-          text: `Join "${eventName}" on SplitParty — code ${code}`,
+          text: `Join "${eventName}" on SplitParty, code ${code}`,
           url,
         });
         return;
@@ -43,12 +43,12 @@ export default function Ticket({
 
   return (
     <div>
-      <div className="relative -rotate-1 rounded-2xl bg-lime p-5 text-void">
+      <div className="relative -rotate-1 rounded-2xl bg-blue p-5 text-void">
         {/* punch holes */}
         <span className="absolute -left-3 top-1/2 h-6 w-6 -translate-y-1/2 rounded-full bg-raised" />
         <span className="absolute -right-3 top-1/2 h-6 w-6 -translate-y-1/2 rounded-full bg-raised" />
 
-        <p className="text-xs font-bold uppercase tracking-widest opacity-70">
+        <p className="text-xs font-bold uppercase tracking-widest">
           admit your whole group chat
         </p>
         <p className="mt-1 truncate font-display text-lg font-bold">{eventName}</p>
@@ -56,7 +56,7 @@ export default function Ticket({
         <p className="text-center font-display text-5xl font-black tracking-[0.18em]">
           {code}
         </p>
-        <p className="mt-3 text-center text-xs font-bold uppercase tracking-widest opacity-70">
+        <p className="mt-3 text-center text-xs font-bold uppercase tracking-widest">
           splitparty · say it out loud or send the link
         </p>
       </div>

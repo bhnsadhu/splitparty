@@ -7,7 +7,7 @@ export function formatMoney(cents: number): string {
   return usd.format(cents / 100);
 }
 
-/** "$40.25" for positives, "-$40.25" for negatives — sign kept out of the symbol. */
+/** "$40.25" for positives, "-$40.25" for negatives, sign kept out of the symbol. */
 export function formatSigned(cents: number): string {
   return cents < 0 ? `-${usd.format(Math.abs(cents) / 100)}` : usd.format(cents / 100);
 }

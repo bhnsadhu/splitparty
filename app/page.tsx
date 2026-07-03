@@ -68,7 +68,7 @@ export default function Home() {
                   {e.eventName}
                 </span>
                 {e.pendingForMe > 0 && (
-                  <Chip tone="pink" className="pulse-dot shrink-0">
+                  <Chip tone="rose" className="pulse-dot shrink-0">
                     {e.pendingForMe} to confirm
                   </Chip>
                 )}
@@ -102,12 +102,12 @@ function FirstOpen() {
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-between px-6 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(4rem+env(safe-area-inset-top))]">
       <div>
         <Wordmark big />
-        <p className="mt-6 font-display text-xl font-bold text-pink">
+        <p className="mt-6 font-display text-xl font-bold text-sky">
           Split the damage.
         </p>
         <p className="mt-4 max-w-[34ch] text-base leading-relaxed text-dim">
           Six people bought stuff for the party. Nobody remembers who owes what.
-          Log it here — we do the math and square everyone up in the fewest
+          Log it here. We do the math and square everyone up in the fewest
           payments possible.
         </p>
       </div>

@@ -58,7 +58,7 @@ export async function GET(
   };
 
   if (me.status !== "active") {
-    // Outside the room you see nothing financial — except payments waiting on
+    // Outside the room you see nothing financial, except payments waiting on
     // YOUR confirmation, so someone who left can still close out their ledger.
     const host = members.find((m) => m.is_host);
     const myPending = settlements.filter(

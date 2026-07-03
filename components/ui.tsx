@@ -9,7 +9,7 @@ type ButtonVariant = "primary" | "ghost" | "danger" | "quiet";
 
 const buttonStyles: Record<ButtonVariant, string> = {
   primary:
-    "bg-lime text-void font-bold hover:brightness-105 active:brightness-95 disabled:opacity-40",
+    "bg-blue text-void font-bold hover:brightness-105 active:brightness-95 disabled:opacity-40",
   ghost:
     "border border-line bg-transparent text-ink font-bold hover:bg-surface active:bg-raised disabled:opacity-40",
   danger:
@@ -77,7 +77,7 @@ export function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
       {...props}
       className={[
         "h-14 w-full rounded-xl border border-line bg-surface px-4 text-ink",
-        "placeholder:text-faint focus:border-lime focus:outline-none",
+        "placeholder:text-faint focus:border-blue focus:outline-none",
         props.className ?? "",
       ].join(" ")}
     />
@@ -130,7 +130,7 @@ export function Sheet({
 
 /* ---------- Avatar ---------- */
 
-const AVATAR_COLORS = ["#cdff49", "#ff5fa2", "#82a5ff", "#ffb84d", "#c89bff", "#4de8c2"];
+const AVATAR_COLORS = ["#3c83f5", "#7dd3fc", "#a5b4fc", "#dde2ee", "#f7a8be", "#93c5fd"];
 
 function hashName(name: string): number {
   let h = 0;
@@ -144,7 +144,7 @@ export function Avatar({ name, dim = false }: { name: string; dim?: boolean }) {
     <span
       aria-hidden
       className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold"
-      style={{ background: bg, color: "#0c0c12", opacity: dim ? 0.45 : 1 }}
+      style={{ background: bg, color: "#19191d", opacity: dim ? 0.45 : 1 }}
     >
       {name.slice(0, 1).toUpperCase()}
     </span>
@@ -153,11 +153,11 @@ export function Avatar({ name, dim = false }: { name: string; dim?: boolean }) {
 
 /* ---------- Chip ---------- */
 
-type ChipTone = "lime" | "pink" | "sky" | "dim";
+type ChipTone = "blue" | "sky" | "rose" | "dim";
 const chipTones: Record<ChipTone, string> = {
-  lime: "bg-lime/15 text-lime",
-  pink: "bg-pink/15 text-pink",
+  blue: "bg-blue text-void",
   sky: "bg-sky/15 text-sky",
+  rose: "bg-rose/15 text-rose",
   dim: "bg-line/50 text-dim",
 };
 
@@ -197,14 +197,14 @@ export function Wordmark({ big = false }: { big?: boolean }) {
     return (
       <h1 className="font-display font-black leading-[0.92] tracking-tight">
         <span className="block text-6xl text-ink">SPLIT</span>
-        <span className="block text-6xl text-lime">PARTY</span>
+        <span className="block text-6xl text-blue">PARTY</span>
       </h1>
     );
   }
   return (
     <span className="font-display text-base font-black tracking-tight">
       <span className="text-ink">SPLIT</span>
-      <span className="text-lime">PARTY</span>
+      <span className="text-blue">PARTY</span>
     </span>
   );
 }

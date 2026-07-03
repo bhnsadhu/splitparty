@@ -1,19 +1,20 @@
 @import "tailwindcss";
 
 @theme {
-  /* Glow-stick palette on a warm near-black. Every text/bg pair here clears
-     WCAG AA at the sizes it's used at. */
-  --color-void: #0c0c12;
-  --color-surface: #16161f;
-  --color-raised: #1e1e2a;
-  --color-line: #2c2c3c;
-  --color-ink: #f4f3ef;
-  --color-dim: #a3a2b3;
-  --color-faint: #717082;
-  --color-lime: #cdff49;
-  --color-pink: #ff5fa2;
-  --color-sky: #82a5ff;
-  --color-danger: #ff5c5c;
+  /* Cluely-style dark palette: near-black base, slate panels, soft lavender
+     text, confident blue actions. Every text/bg pair here clears WCAG AA at
+     the sizes it's used at. */
+  --color-void: #19191d;
+  --color-surface: #31343e;
+  --color-raised: #3a3e4a;
+  --color-line: #464b59;
+  --color-ink: #dde2ee;
+  --color-dim: #a6adc3;
+  --color-faint: #99a0b5;
+  --color-blue: #3c83f5;
+  --color-sky: #9dbff9;
+  --color-rose: #f7a8be;
+  --color-danger: #ff8888;
 
   --font-display: var(--font-unbounded);
   --font-body: var(--font-grotesk);
@@ -37,7 +38,7 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-lime);
+  outline: 2px solid var(--color-blue);
   outline-offset: 2px;
   border-radius: 4px;
 }
