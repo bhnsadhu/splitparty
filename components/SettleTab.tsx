@@ -76,11 +76,7 @@ export default function SettleTab({
       {/* ---- My status ---- */}
       <section
         className={`rounded-3xl border p-5 ${
-          net > 0
-            ? "border-blue/40 bg-blue/10"
-            : net < 0
-              ? "border-line bg-surface"
-              : "border-green/40 bg-green/10"
+          net !== 0 ? "border-red/40 bg-red/10" : "border-green/40 bg-green/10"
         }`}
       >
         <p className="text-xs font-bold uppercase tracking-widest text-faint">
@@ -88,7 +84,7 @@ export default function SettleTab({
         </p>
         <p
           className={`mt-1 font-display text-3xl font-black tracking-tight ${
-            net > 0 ? "text-blue" : net < 0 ? "text-ink" : "text-green"
+            net !== 0 ? "text-red" : "text-green"
           }`}
         >
           {net > 0 ? (
@@ -123,11 +119,11 @@ export default function SettleTab({
               return (
                 <div
                   key={s.id}
-                  className="rounded-2xl border border-blue/40 bg-surface p-4"
+                  className="rounded-2xl border border-red/40 bg-surface p-4"
                 >
                   <p className="text-sm text-ink">
                     <Name id={s.from} /> says they paid you{" "}
-                    <Money cents={s.amountCents} className="font-bold text-blue" />
+                    <Money cents={s.amountCents} className="font-bold text-red" />
                     <span className="text-faint"> · {timeAgo(s.createdAt)}</span>
                   </p>
                   {owed !== s.amountCents && (
@@ -212,8 +208,8 @@ export default function SettleTab({
               >
                 <div className="min-w-0 flex-1 text-sm text-dim">
                   You paid <Name id={s.to} />{" "}
-                  <Money cents={s.amountCents} className="font-bold text-ink" />
-                  <Chip tone="dim" className="ml-2">pending</Chip>
+                  <Money cents={s.amountCents} className="font-bold text-red" />
+                  <Chip tone="red" className="ml-2">pending</Chip>
                 </div>
                 <button
                   className="shrink-0 text-xs font-bold text-faint underline"
@@ -284,25 +280,21 @@ function PlanRow({
   return (
     <div
       className={`rounded-2xl border px-4 py-3 ${
-        iOwe ? "border-blue/40 bg-surface" : owedMe ? "border-blue/30 bg-surface" : "border-line bg-surface"
+        iOwe ? "border-red/40 bg-surface" : owedMe ? "border-red/30 bg-surface" : "border-line bg-surface"
       }`}
     >
       <div className="flex items-center gap-3">
         <p className="min-w-0 flex-1 text-sm text-dim">
-          <span className={`font-bold ${iOwe ? "text-blue" : "text-ink"}`}>
-            {name(t.from)}
-          </span>{" "}
+          <span className="font-bold text-ink">{name(t.from)}</span>{" "}
           {iOwe ? "owe" : "owes"}{" "}
-          <span className={`font-bold ${owedMe ? "text-blue" : "text-ink"}`}>
-            {name(t.to)}
-          </span>
+          <span className="font-bold text-ink">{name(t.to)}</span>
         </p>
-        <Money cents={t.amountCents} className="shrink-0 text-base font-bold text-ink" />
+        <Money cents={t.amountCents} className="shrink-0 text-base font-bold text-red" />
       </div>
       {(pendingCents > 0 || iOwe) && (
         <div className="mt-2 flex items-center gap-2">
           {pendingCents > 0 && (
-            <Chip tone="dim">{formatMoney(pendingCents)} pending confirmation</Chip>
+            <Chip tone="red">{formatMoney(pendingCents)} pending confirmation</Chip>
           )}
           {iOwe && pendingCents === 0 && (
             <Button small onClick={onPay}>
@@ -335,7 +327,7 @@ function HistoryRow({
         </span>
       </span>
       <span
-        className={`shrink-0 font-bold ${rejected ? "text-dim" : "text-green"}`}
+        className={`shrink-0 font-bold ${rejected ? "text-red" : "text-green"}`}
         aria-label={rejected ? "declined" : "settled"}
       >
         {rejected ? "✕" : "✓"}
@@ -438,7 +430,7 @@ function RecordPaymentSheet({
           </div>
         </Field>
         {amount && !cents && (
-          <p className="text-sm font-bold text-ink">Amounts look like 12 or 12.50.</p>
+          <p className="text-sm font-bold text-red">Amounts look like 12 or 12.50.</p>
         )}
         {cents && to && owed > 0 && cents > owed && (
           <p className="text-sm text-dim">

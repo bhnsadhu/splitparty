@@ -88,7 +88,7 @@ export default function CrewTab({
             {atTheDoor.map((m) => (
               <div
                 key={m.id}
-                className="rounded-2xl border border-blue/40 bg-surface p-4"
+                className="rounded-2xl border border-line bg-surface p-4"
               >
                 <div className="flex items-center gap-3">
                   <Avatar name={m.name} />
@@ -163,9 +163,9 @@ export default function CrewTab({
                     </p>
                   </div>
                   {net > 0 ? (
-                    <Chip tone="blue">+{formatMoney(net)}</Chip>
+                    <Chip tone="red">+{formatMoney(net)}</Chip>
                   ) : net < 0 ? (
-                    <Chip tone="dim">-{formatMoney(-net)}</Chip>
+                    <Chip tone="red">-{formatMoney(-net)}</Chip>
                   ) : (
                     <Chip tone="green">square</Chip>
                   )}
@@ -192,11 +192,11 @@ export default function CrewTab({
                               {t.from === m.id ? (
                                 <>owes <span className="font-bold">{name(t.to)}</span></>
                               ) : (
-                                <>gets <span className="font-bold">{formatMoney(t.amountCents)}</span> from{" "}
+                                <>gets <span className="font-bold text-red">{formatMoney(t.amountCents)}</span> from{" "}
                                   <span className="font-bold">{name(t.from)}</span></>
                               )}
                               {t.from === m.id && (
-                                <> <Money cents={t.amountCents} className="font-bold" /></>
+                                <> <Money cents={t.amountCents} className="font-bold text-red" /></>
                               )}
                             </p>
                           ))}

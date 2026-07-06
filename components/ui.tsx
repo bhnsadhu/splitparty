@@ -13,7 +13,7 @@ const buttonStyles: Record<ButtonVariant, string> = {
   ghost:
     "border border-line bg-transparent text-ink font-bold hover:bg-surface active:bg-raised disabled:opacity-40",
   danger:
-    "border border-dim/60 bg-transparent text-ink font-bold hover:bg-surface disabled:opacity-40",
+    "border border-red/40 bg-transparent text-red font-bold hover:bg-red/10 disabled:opacity-40",
   quiet: "bg-surface text-ink font-bold hover:bg-line/60 disabled:opacity-40",
 };
 
@@ -130,7 +130,9 @@ export function Sheet({
 
 /* ---------- Avatar ---------- */
 
-const AVATAR_COLORS = ["#3D5AFE", "#39FF88", "#E8E9ED", "#8A8D99"];
+// No green or red here: those always mean settled / outstanding, and an
+// avatar must never read as a money state.
+const AVATAR_COLORS = ["#3D5AFE", "#E8E9ED", "#8A8D99"];
 
 function hashName(name: string): number {
   let h = 0;
@@ -153,9 +155,9 @@ export function Avatar({ name, dim = false }: { name: string; dim?: boolean }) {
 
 /* ---------- Chip ---------- */
 
-type ChipTone = "blue" | "green" | "dim";
+type ChipTone = "red" | "green" | "dim";
 const chipTones: Record<ChipTone, string> = {
-  blue: "bg-blue text-ink",
+  red: "bg-red/15 text-red",
   green: "bg-green/15 text-green",
   dim: "bg-line/50 text-dim",
 };

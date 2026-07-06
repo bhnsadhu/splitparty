@@ -1,10 +1,11 @@
 @import "tailwindcss";
 
 @theme {
-  /* Full dark mode. Six colors, nothing else: near-black blue base, one
-     raised card layer, off-white ink, one muted gray, electric blue for
-     actions, acid green strictly for confirmed/settled states. Borders are
-     the muted gray at 25% alpha, not a separate hue. */
+  /* Full dark mode. Near-black blue base, one raised card layer, off-white
+     ink, one muted gray. Semantic colors: electric blue for buttons/actions
+     only, acid green for confirmed/settled, red for outstanding/owed money
+     (anything not settled yet). Borders are the muted gray at 25% alpha,
+     not a separate hue. */
   --color-void: #0f1117;
   --color-surface: #171a22;
   --color-raised: #171a22;
@@ -14,6 +15,7 @@
   --color-faint: #8a8d99;
   --color-blue: #3d5afe;
   --color-green: #39ff88;
+  --color-red: #ff4d5e;
 
   --font-display: var(--font-unbounded);
   --font-body: var(--font-grotesk);

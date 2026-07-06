@@ -80,7 +80,7 @@ function JoinForm() {
             required
           />
         </Field>
-        {error && <p className="text-sm font-bold text-ink">{error}</p>}
+        {error && <p className="text-sm font-bold text-red">{error}</p>}
         <Button full disabled={busy || code.trim().length < 4 || !displayName.trim()}>
           {busy ? "Knocking…" : "Ask to join"}
         </Button>

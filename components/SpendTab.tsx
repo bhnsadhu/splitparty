@@ -29,7 +29,7 @@ export default function SpendTab({
       {state.pendingForMe > 0 && (
         <button
           onClick={goSettle}
-          className="mb-4 w-full rounded-2xl border border-blue/40 bg-blue/10 px-4 py-3 text-left text-sm font-bold text-ink"
+          className="mb-4 w-full rounded-2xl border border-red/40 bg-red/10 px-4 py-3 text-left text-sm font-bold text-red"
         >
           {state.pendingForMe === 1
             ? "Someone says they paid you back, confirm it →"
@@ -186,7 +186,7 @@ function AddExpenseSheet({
           </div>
         </Field>
         {amount && !cents && (
-          <p className="text-sm font-bold text-ink">
+          <p className="text-sm font-bold text-red">
             Amounts look like 12 or 12.50.
           </p>
         )}

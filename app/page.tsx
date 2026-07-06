@@ -68,7 +68,7 @@ export default function Home() {
                   {e.eventName}
                 </span>
                 {e.pendingForMe > 0 && (
-                  <Chip tone="blue" className="pulse-dot shrink-0">
+                  <Chip tone="red" className="pulse-dot shrink-0">
                     {e.pendingForMe} to confirm
                   </Chip>
                 )}
