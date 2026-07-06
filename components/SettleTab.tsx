@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Button, Chip, Field, Money, Sheet, TextInput, timeAgo } from "@/components/ui";
-import { api } from "@/lib/client";
+import { createSettlement, resolveSettlement } from "@/lib/client";
 import { formatMoney, parseMoney } from "@/lib/money";
 import type { EventState, SettlementPub, Transfer } from "@/lib/types";
 
@@ -56,7 +56,7 @@ export default function SettleTab({
   async function resolve(sid: string, action: "confirm" | "reject" | "cancel") {
     setBusyId(sid);
     try {
-      await api(`/api/events/${state.event.id}/settlements/${sid}`, { action });
+      await resolveSettlement(state.event.id, sid, action);
       await refetch();
       if (action === "confirm") notify("Confirmed. Ledger updated for everyone.");
       if (action === "reject") notify("Sent back. It stays owed until it's real.");
@@ -379,10 +379,7 @@ function RecordPaymentSheet({
     if (!cents || !to) return;
     setBusy(true);
     try {
-      await api(`/api/events/${state.event.id}/settlements`, {
-        toMemberId: to,
-        amountCents: cents,
-      });
+      await createSettlement(state.event.id, to, cents);
       await refetch();
       onClose();
       notify("Sent. It counts once they confirm.");

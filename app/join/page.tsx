@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { Button, Field, TextInput, Wordmark } from "@/components/ui";
-import { api } from "@/lib/client";
+import { joinEvent } from "@/lib/client";
 
 export default function JoinPage() {
   return (
@@ -27,11 +27,8 @@ function JoinForm() {
     setBusy(true);
     setError(null);
     try {
-      const { eventId } = await api<{ eventId: string; status: string }>(
-        "/api/events/join",
-        { code, displayName },
-      );
-      router.push(`/e/${eventId}`);
+      const { eventId } = await joinEvent(code, displayName);
+      router.push(`/e?id=${eventId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something broke. Try again.");
       setBusy(false);

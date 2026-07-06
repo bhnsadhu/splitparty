@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button, Field, TextInput, Wordmark } from "@/components/ui";
-import { api } from "@/lib/client";
+import { createEvent } from "@/lib/client";
 
 export default function NewEvent() {
   const router = useRouter();
@@ -18,11 +18,8 @@ export default function NewEvent() {
     setBusy(true);
     setError(null);
     try {
-      const { eventId } = await api<{ eventId: string; code: string }>(
-        "/api/events",
-        { eventName, displayName },
-      );
-      router.push(`/e/${eventId}?welcome=1`);
+      const { eventId } = await createEvent(eventName, displayName);
+      router.push(`/e?id=${eventId}&welcome=1`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something broke. Try again.");
       setBusy(false);

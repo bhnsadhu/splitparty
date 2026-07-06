@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Avatar, Button, Field, Money, Sheet, TextInput, timeAgo } from "@/components/ui";
-import { api } from "@/lib/client";
+import { addExpense } from "@/lib/client";
 import { parseMoney } from "@/lib/money";
 import type { EventState } from "@/lib/types";
 
@@ -122,11 +122,7 @@ function AddExpenseSheet({
     if (!cents) return;
     setBusy(true);
     try {
-      await api(`/api/events/${state.event.id}/expenses`, {
-        label,
-        amountCents: cents,
-        paidBy: payerId,
-      });
+      await addExpense(state.event.id, label, cents, payerId);
       await refetch();
       setLabel("");
       setAmount("");

@@ -6,13 +6,13 @@ interface MemberIn {
 }
 interface ExpenseIn {
   id: string;
-  paid_by: string;
-  amount_cents: number;
+  paidBy: string;
+  amountCents: number;
 }
 interface SettlementIn {
-  from_member: string;
-  to_member: string;
-  amount_cents: number;
+  from: string;
+  to: string;
+  amountCents: number;
   status: string;
 }
 
@@ -62,11 +62,11 @@ export function computeLedger(
 
   let totalSpentCents = 0;
   for (const e of expenses) {
-    totalSpentCents += e.amount_cents;
-    bump(paid, e.paid_by, e.amount_cents);
+    totalSpentCents += e.amountCents;
+    bump(paid, e.paidBy, e.amountCents);
     if (n === 0) continue;
-    const base = Math.floor(e.amount_cents / n);
-    const remainder = e.amount_cents - base * n;
+    const base = Math.floor(e.amountCents / n);
+    const remainder = e.amountCents - base * n;
     const offset = seedFromId(e.id) % n;
     for (let k = 0; k < n; k++) {
       const memberId = activeIds[(offset + k) % n];
@@ -76,8 +76,8 @@ export function computeLedger(
 
   for (const s of settlements) {
     if (s.status !== "confirmed") continue;
-    bump(sent, s.from_member, s.amount_cents);
-    bump(recv, s.to_member, s.amount_cents);
+    bump(sent, s.from, s.amountCents);
+    bump(recv, s.to, s.amountCents);
   }
 
   const balances: Balance[] = members

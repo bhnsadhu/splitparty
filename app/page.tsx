@@ -3,10 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button, Chip, Money, Wordmark } from "@/components/ui";
-import { api } from "@/lib/client";
+import { HOME_CACHE_KEY, myEvents } from "@/lib/client";
 import type { MyEventSummary } from "@/lib/types";
-
-const CACHE_KEY = "sp_home_cache";
 
 export default function Home() {
   const [events, setEvents] = useState<MyEventSummary[] | null>(null);
@@ -14,13 +12,13 @@ export default function Home() {
   useEffect(() => {
     // Paint instantly from the last known list, then refresh from the server.
     try {
-      const cached = localStorage.getItem(CACHE_KEY);
+      const cached = localStorage.getItem(HOME_CACHE_KEY);
       if (cached) setEvents(JSON.parse(cached));
     } catch {}
-    api<{ events: MyEventSummary[] }>("/api/mine")
-      .then(({ events }) => {
+    myEvents()
+      .then((events) => {
         setEvents(events);
-        localStorage.setItem(CACHE_KEY, JSON.stringify(events));
+        localStorage.setItem(HOME_CACHE_KEY, JSON.stringify(events));
       })
       .catch(() => setEvents((prev) => prev ?? []));
   }, []);
@@ -60,7 +58,7 @@ export default function Home() {
         {events.map((e) => (
           <li key={e.eventId}>
             <Link
-              href={`/e/${e.eventId}`}
+              href={`/e?id=${e.eventId}`}
               className="block rounded-2xl border border-line bg-surface p-4 transition-transform active:scale-[0.98]"
             >
               <div className="flex items-start justify-between gap-3">
@@ -93,6 +91,12 @@ export default function Home() {
           </li>
         ))}
       </ul>
+
+      <footer className="mt-10 text-center">
+        <Link href="/privacy" className="text-xs text-faint underline">
+          Privacy & my data
+        </Link>
+      </footer>
     </main>
   );
 }
@@ -122,7 +126,12 @@ function FirstOpen() {
           </Button>
         </Link>
         <p className="pt-2 text-center text-xs text-faint">
-          no accounts · no app store · just a code
+          no accounts · no sign-ups · just a code
+        </p>
+        <p className="text-center">
+          <Link href="/privacy" className="text-xs text-faint underline">
+            Privacy & my data
+          </Link>
         </p>
       </div>
     </main>

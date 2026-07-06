@@ -16,7 +16,10 @@ export default function Ticket({
 }) {
   const [copied, setCopied] = useState(false);
 
-  const link = () => `${window.location.origin}/join?code=${code}`;
+  // Always the public web URL: inside Capacitor the origin is
+  // capacitor://localhost, which would be a dead link for anyone you send it to.
+  const link = () =>
+    `${process.env.NEXT_PUBLIC_APP_URL ?? "https://splitparty.vercel.app"}/join?code=${code}`;
 
   async function copyLink() {
     try {

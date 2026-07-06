@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Avatar, Button, Chip, Money, timeAgo } from "@/components/ui";
-import { api } from "@/lib/client";
+import { memberAction as memberActionRpc } from "@/lib/client";
 import { formatMoney } from "@/lib/money";
 import type { EventState, MemberPub } from "@/lib/types";
 
@@ -49,7 +49,7 @@ export default function CrewTab({
   ) {
     setBusyId(memberId);
     try {
-      await api(`/api/events/${state.event.id}/members/${memberId}`, { action });
+      await memberActionRpc(state.event.id, memberId, action);
       if (action === "leave") {
         notify("You're out. Settled history stays put.");
         router.push("/");

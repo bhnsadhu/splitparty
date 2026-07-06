@@ -8,7 +8,7 @@ import SettleTab from "@/components/SettleTab";
 import SpendTab from "@/components/SpendTab";
 import Ticket from "@/components/Ticket";
 import { Button, Money, Sheet, Wordmark } from "@/components/ui";
-import { api, useEventState } from "@/lib/client";
+import { memberAction as memberActionRpc, resolveSettlement, useEventState } from "@/lib/client";
 import type { EventState, RestrictedState } from "@/lib/types";
 
 type Tab = "spend" | "settle" | "crew";
@@ -210,7 +210,7 @@ function RestrictedView({
   async function memberAction(action: "leave" | "rerequest") {
     setBusy(true);
     try {
-      await api(`/api/events/${eventId}/members/${state.me.memberId}`, { action });
+      await memberActionRpc(eventId, state.me.memberId, action);
       if (action === "leave") {
         notify("Request cancelled.");
         router.push("/");
@@ -226,7 +226,7 @@ function RestrictedView({
   async function resolve(sid: string, action: "confirm" | "reject") {
     setBusy(true);
     try {
-      await api(`/api/events/${eventId}/settlements/${sid}`, { action });
+      await resolveSettlement(eventId, sid, action);
       await refetch();
     } catch (e) {
       notify(e instanceof Error ? e.message : "Something broke.");
