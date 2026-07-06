@@ -108,7 +108,7 @@ function ActiveEvent({
           </h1>
           <button
             onClick={() => setTicketOpen(true)}
-            className="shrink-0 rounded-full bg-blue px-3 py-1.5 font-display text-xs font-black tracking-[0.15em] text-void transition-transform active:scale-95"
+            className="shrink-0 rounded-full bg-blue px-3 py-1.5 font-display text-xs font-black tracking-[0.15em] text-ink transition-transform active:scale-95"
           >
             {state.event.code}
           </button>
@@ -179,7 +179,7 @@ function TabButton({
       >
         {label}
         {badge > 0 && (
-          <span className="pulse-dot absolute -right-4 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose px-1 text-xs font-black text-void">
+          <span className="pulse-dot absolute -right-4 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-blue px-1 text-xs font-black text-ink">
             {badge}
           </span>
         )}
@@ -266,7 +266,7 @@ function RestrictedView({
             <div key={p.id} className="rounded-2xl border border-line bg-surface p-4">
               <p className="text-sm text-ink">
                 <span className="font-bold">{p.fromName}</span> says they paid you{" "}
-                <Money cents={p.amountCents} className="font-bold text-sky" />
+                <Money cents={p.amountCents} className="font-bold text-blue" />
               </p>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <Button small disabled={busy} onClick={() => resolve(p.id, "confirm")}>

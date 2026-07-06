@@ -29,7 +29,7 @@ export default function SpendTab({
       {state.pendingForMe > 0 && (
         <button
           onClick={goSettle}
-          className="mb-4 w-full rounded-2xl border border-rose/40 bg-rose/10 px-4 py-3 text-left text-sm font-bold text-rose"
+          className="mb-4 w-full rounded-2xl border border-blue/40 bg-blue/10 px-4 py-3 text-left text-sm font-bold text-ink"
         >
           {state.pendingForMe === 1
             ? "Someone says they paid you back, confirm it →"
@@ -176,7 +176,7 @@ function AddExpenseSheet({
                 onClick={() => setPaidBy(m.id)}
                 className={`rounded-full px-4 py-2 text-sm font-bold transition-colors ${
                   payerId === m.id
-                    ? "bg-blue text-void"
+                    ? "bg-blue text-ink"
                     : "border border-line text-dim"
                 }`}
               >
@@ -186,7 +186,7 @@ function AddExpenseSheet({
           </div>
         </Field>
         {amount && !cents && (
-          <p className="text-sm font-bold text-danger">
+          <p className="text-sm font-bold text-ink">
             Amounts look like 12 or 12.50.
           </p>
         )}

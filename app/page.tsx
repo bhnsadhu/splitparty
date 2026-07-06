@@ -68,12 +68,12 @@ export default function Home() {
                   {e.eventName}
                 </span>
                 {e.pendingForMe > 0 && (
-                  <Chip tone="rose" className="pulse-dot shrink-0">
+                  <Chip tone="blue" className="pulse-dot shrink-0">
                     {e.pendingForMe} to confirm
                   </Chip>
                 )}
                 {e.myStatus === "pending" && (
-                  <Chip tone="sky" className="shrink-0">
+                  <Chip tone="dim" className="shrink-0">
                     waiting to get in
                   </Chip>
                 )}
@@ -102,7 +102,7 @@ function FirstOpen() {
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-between px-6 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(4rem+env(safe-area-inset-top))]">
       <div>
         <Wordmark big />
-        <p className="mt-6 font-display text-xl font-bold text-sky">
+        <p className="mt-6 font-display text-xl font-bold text-blue">
           Split the damage.
         </p>
         <p className="mt-4 max-w-[34ch] text-base leading-relaxed text-dim">

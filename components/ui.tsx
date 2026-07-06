@@ -9,12 +9,12 @@ type ButtonVariant = "primary" | "ghost" | "danger" | "quiet";
 
 const buttonStyles: Record<ButtonVariant, string> = {
   primary:
-    "bg-blue text-void font-bold hover:brightness-105 active:brightness-95 disabled:opacity-40",
+    "bg-blue text-ink font-bold hover:brightness-105 active:brightness-95 disabled:opacity-40",
   ghost:
     "border border-line bg-transparent text-ink font-bold hover:bg-surface active:bg-raised disabled:opacity-40",
   danger:
-    "border border-danger/40 bg-transparent text-danger font-bold hover:bg-danger/10 disabled:opacity-40",
-  quiet: "bg-raised text-ink font-bold hover:bg-line/60 disabled:opacity-40",
+    "border border-dim/60 bg-transparent text-ink font-bold hover:bg-surface disabled:opacity-40",
+  quiet: "bg-surface text-ink font-bold hover:bg-line/60 disabled:opacity-40",
 };
 
 export function Button({
@@ -130,7 +130,7 @@ export function Sheet({
 
 /* ---------- Avatar ---------- */
 
-const AVATAR_COLORS = ["#3c83f5", "#7dd3fc", "#a5b4fc", "#dde2ee", "#f7a8be", "#93c5fd"];
+const AVATAR_COLORS = ["#3D5AFE", "#39FF88", "#E8E9ED", "#8A8D99"];
 
 function hashName(name: string): number {
   let h = 0;
@@ -144,7 +144,7 @@ export function Avatar({ name, dim = false }: { name: string; dim?: boolean }) {
     <span
       aria-hidden
       className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold"
-      style={{ background: bg, color: "#19191d", opacity: dim ? 0.45 : 1 }}
+      style={{ background: bg, color: "#0F1117", opacity: dim ? 0.45 : 1 }}
     >
       {name.slice(0, 1).toUpperCase()}
     </span>
@@ -153,11 +153,10 @@ export function Avatar({ name, dim = false }: { name: string; dim?: boolean }) {
 
 /* ---------- Chip ---------- */
 
-type ChipTone = "blue" | "sky" | "rose" | "dim";
+type ChipTone = "blue" | "green" | "dim";
 const chipTones: Record<ChipTone, string> = {
-  blue: "bg-blue text-void",
-  sky: "bg-sky/15 text-sky",
-  rose: "bg-rose/15 text-rose",
+  blue: "bg-blue text-ink",
+  green: "bg-green/15 text-green",
   dim: "bg-line/50 text-dim",
 };
 

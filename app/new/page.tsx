@@ -66,7 +66,7 @@ export default function NewEvent() {
             required
           />
         </Field>
-        {error && <p className="text-sm font-bold text-danger">{error}</p>}
+        {error && <p className="text-sm font-bold text-ink">{error}</p>}
         <Button full disabled={busy || !eventName.trim() || !displayName.trim()}>
           {busy ? "Setting up…" : "Create & get my code"}
         </Button>

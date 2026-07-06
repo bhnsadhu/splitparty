@@ -43,7 +43,7 @@ export default function Ticket({
 
   return (
     <div>
-      <div className="relative -rotate-1 rounded-2xl bg-blue p-5 text-void">
+      <div className="relative -rotate-1 rounded-2xl bg-blue p-5 text-ink">
         {/* punch holes */}
         <span className="absolute -left-3 top-1/2 h-6 w-6 -translate-y-1/2 rounded-full bg-raised" />
         <span className="absolute -right-3 top-1/2 h-6 w-6 -translate-y-1/2 rounded-full bg-raised" />
@@ -52,7 +52,7 @@ export default function Ticket({
           admit your whole group chat
         </p>
         <p className="mt-1 truncate font-display text-lg font-bold">{eventName}</p>
-        <div className="my-4 border-t-2 border-dashed border-void/30" />
+        <div className="my-4 border-t-2 border-dashed border-ink/30" />
         <p className="text-center font-display text-5xl font-black tracking-[0.18em]">
           {code}
         </p>

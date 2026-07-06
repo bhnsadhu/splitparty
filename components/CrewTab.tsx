@@ -88,7 +88,7 @@ export default function CrewTab({
             {atTheDoor.map((m) => (
               <div
                 key={m.id}
-                className="rounded-2xl border border-sky/40 bg-surface p-4"
+                className="rounded-2xl border border-blue/40 bg-surface p-4"
               >
                 <div className="flex items-center gap-3">
                   <Avatar name={m.name} />
@@ -165,9 +165,9 @@ export default function CrewTab({
                   {net > 0 ? (
                     <Chip tone="blue">+{formatMoney(net)}</Chip>
                   ) : net < 0 ? (
-                    <Chip tone="rose">-{formatMoney(-net)}</Chip>
+                    <Chip tone="dim">-{formatMoney(-net)}</Chip>
                   ) : (
-                    <Chip tone="dim">square</Chip>
+                    <Chip tone="green">square</Chip>
                   )}
                 </button>
 
@@ -200,7 +200,7 @@ export default function CrewTab({
                               )}
                             </p>
                           ))}
-                        {net === 0 && <p>all square ✓</p>}
+                        {net === 0 && <p className="text-green">all square ✓</p>}
                       </>
                     ) : (
                       <p>no money activity</p>

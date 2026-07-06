@@ -1,20 +1,19 @@
 @import "tailwindcss";
 
 @theme {
-  /* Cluely-style dark palette: near-black base, slate panels, soft lavender
-     text, confident blue actions. Every text/bg pair here clears WCAG AA at
-     the sizes it's used at. */
-  --color-void: #19191d;
-  --color-surface: #31343e;
-  --color-raised: #3a3e4a;
-  --color-line: #464b59;
-  --color-ink: #dde2ee;
-  --color-dim: #a6adc3;
-  --color-faint: #99a0b5;
-  --color-blue: #3c83f5;
-  --color-sky: #9dbff9;
-  --color-rose: #f7a8be;
-  --color-danger: #ff8888;
+  /* Full dark mode. Six colors, nothing else: near-black blue base, one
+     raised card layer, off-white ink, one muted gray, electric blue for
+     actions, acid green strictly for confirmed/settled states. Borders are
+     the muted gray at 25% alpha, not a separate hue. */
+  --color-void: #0f1117;
+  --color-surface: #171a22;
+  --color-raised: #171a22;
+  --color-line: #8a8d9940;
+  --color-ink: #e8e9ed;
+  --color-dim: #8a8d99;
+  --color-faint: #8a8d99;
+  --color-blue: #3d5afe;
+  --color-green: #39ff88;
 
   --font-display: var(--font-unbounded);
   --font-body: var(--font-grotesk);
