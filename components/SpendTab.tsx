@@ -176,7 +176,7 @@ function AddExpenseSheet({
                 onClick={() => setPaidBy(m.id)}
                 className={`rounded-full px-4 py-2 text-sm font-bold transition-colors ${
                   payerId === m.id
-                    ? "bg-blue text-ink"
+                    ? "bg-ink text-void"
                     : "border border-line text-dim"
                 }`}
               >

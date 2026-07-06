@@ -405,7 +405,7 @@ function RecordPaymentSheet({
                 type="button"
                 onClick={() => setTo(m.id)}
                 className={`rounded-full px-4 py-2 text-sm font-bold transition-colors ${
-                  to === m.id ? "bg-blue text-ink" : "border border-line text-dim"
+                  to === m.id ? "bg-ink text-void" : "border border-line text-dim"
                 }`}
               >
                 {m.name}

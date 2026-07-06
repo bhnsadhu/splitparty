@@ -108,7 +108,7 @@ function ActiveEvent({
           </h1>
           <button
             onClick={() => setTicketOpen(true)}
-            className="shrink-0 rounded-full bg-blue px-3 py-1.5 font-display text-xs font-black tracking-[0.15em] text-ink transition-transform active:scale-95"
+            className="shrink-0 rounded-full bg-ink px-3 py-1.5 font-display text-xs font-black tracking-[0.15em] text-void transition-transform active:scale-95"
           >
             {state.event.code}
           </button>
@@ -175,7 +175,7 @@ function TabButton({
       className="relative flex h-16 flex-col items-center justify-center"
     >
       <span
-        className={`font-display text-sm font-bold ${active ? "text-blue" : "text-dim"}`}
+        className={`font-display text-sm font-bold ${active ? "text-ink" : "text-dim"}`}
       >
         {label}
         {badge > 0 && (
@@ -185,7 +185,7 @@ function TabButton({
         )}
       </span>
       <span
-        className={`mt-1 h-1 w-8 rounded-full transition-colors ${active ? "bg-blue" : "bg-transparent"}`}
+        className={`mt-1 h-1 w-8 rounded-full transition-colors ${active ? "bg-ink" : "bg-transparent"}`}
       />
     </button>
   );

@@ -1,19 +1,18 @@
 @import "tailwindcss";
 
 @theme {
-  /* Full dark mode. Near-black blue base, one raised card layer, off-white
-     ink, one muted gray. Semantic colors: electric blue for buttons/actions
-     only, acid green for confirmed/settled, red for outstanding/owed money
-     (anything not settled yet). Borders are the muted gray at 25% alpha,
-     not a separate hue. */
-  --color-void: #0f1117;
-  --color-surface: #171a22;
-  --color-raised: #171a22;
-  --color-line: #8a8d9940;
-  --color-ink: #e8e9ed;
-  --color-dim: #8a8d99;
-  --color-faint: #8a8d99;
-  --color-blue: #3d5afe;
+  /* Final palette. True black base, one #141414 card layer, off-white ink.
+     Buttons/actions have no hue: off-white fill with black text. The only
+     color is semantic: red for outstanding/owed money (anything not settled
+     yet), acid green for confirmed/settled. Borders are the muted gray at
+     25% alpha, not a separate hue. */
+  --color-void: #000000;
+  --color-surface: #141414;
+  --color-raised: #141414;
+  --color-line: #94949040;
+  --color-ink: #f5f5f0;
+  --color-dim: #949490;
+  --color-faint: #949490;
   --color-green: #39ff88;
   --color-red: #ff4d5e;
 
@@ -39,7 +38,7 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-blue);
+  outline: 2px solid var(--color-ink);
   outline-offset: 2px;
   border-radius: 4px;
 }

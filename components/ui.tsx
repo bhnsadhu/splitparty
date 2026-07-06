@@ -9,7 +9,7 @@ type ButtonVariant = "primary" | "ghost" | "danger" | "quiet";
 
 const buttonStyles: Record<ButtonVariant, string> = {
   primary:
-    "bg-blue text-ink font-bold hover:brightness-105 active:brightness-95 disabled:opacity-40",
+    "bg-ink text-void font-bold hover:brightness-95 active:brightness-90 disabled:opacity-40",
   ghost:
     "border border-line bg-transparent text-ink font-bold hover:bg-surface active:bg-raised disabled:opacity-40",
   danger:
@@ -77,7 +77,7 @@ export function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
       {...props}
       className={[
         "h-14 w-full rounded-xl border border-line bg-surface px-4 text-ink",
-        "placeholder:text-faint focus:border-blue focus:outline-none",
+        "placeholder:text-faint focus:border-ink focus:outline-none",
         props.className ?? "",
       ].join(" ")}
     />
@@ -132,7 +132,7 @@ export function Sheet({
 
 // No green or red here: those always mean settled / outstanding, and an
 // avatar must never read as a money state.
-const AVATAR_COLORS = ["#3D5AFE", "#E8E9ED", "#8A8D99"];
+const AVATAR_COLORS = ["#F5F5F0", "#949490"];
 
 function hashName(name: string): number {
   let h = 0;
@@ -146,7 +146,7 @@ export function Avatar({ name, dim = false }: { name: string; dim?: boolean }) {
     <span
       aria-hidden
       className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold"
-      style={{ background: bg, color: "#0F1117", opacity: dim ? 0.45 : 1 }}
+      style={{ background: bg, color: "#000000", opacity: dim ? 0.45 : 1 }}
     >
       {name.slice(0, 1).toUpperCase()}
     </span>
@@ -198,14 +198,14 @@ export function Wordmark({ big = false }: { big?: boolean }) {
     return (
       <h1 className="font-display font-black leading-[0.92] tracking-tight">
         <span className="block text-6xl text-ink">SPLIT</span>
-        <span className="block text-6xl text-blue">PARTY</span>
+        <span className="block text-6xl text-dim">PARTY</span>
       </h1>
     );
   }
   return (
     <span className="font-display text-base font-black tracking-tight">
       <span className="text-ink">SPLIT</span>
-      <span className="text-blue">PARTY</span>
+      <span className="text-dim">PARTY</span>
     </span>
   );
 }
