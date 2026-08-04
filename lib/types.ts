@@ -7,6 +7,8 @@ export interface MemberPub {
   name: string;
   isHost: boolean;
   status: MemberStatus;
+  /** False for privacy-deleted identities that can no longer confirm payments. */
+  canReceivePayment?: boolean;
   joinedAt: string;
 }
 
@@ -16,6 +18,8 @@ export interface ExpensePub {
   amountCents: number;
   paidBy: string;
   createdBy: string;
+  /** Immutable member snapshot for this expense. Absent only on legacy RPC responses. */
+  participantIds?: string[];
   createdAt: string;
 }
 
@@ -39,7 +43,7 @@ export interface Balance {
   netCents: number;
 }
 
-/** One suggested repayment in the minimal-transfer plan. */
+/** One suggested repayment in the deterministic settlement plan. */
 export interface Transfer {
   from: string;
   to: string;

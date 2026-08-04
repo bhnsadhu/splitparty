@@ -1,9 +1,22 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Button, Chip, Field, Money, Sheet, TextInput, timeAgo } from "@/components/ui";
-import { createSettlement, resolveSettlement } from "@/lib/client";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Button, Chip, Field, FieldGroup, Money, Sheet, TextInput, timeAgo } from "@/components/ui";
+import {
+  clearPendingMutation,
+  createSettlement,
+  loadPendingMutation,
+  mutationMayHaveCommitted,
+  newRequestId,
+  resolveSettlement,
+  savePendingMutation,
+} from "@/lib/client";
 import { formatMoney, parseMoney } from "@/lib/money";
+import {
+  isPaymentPayload,
+  paymentRecoveryMatchesSettlement,
+  type PaymentPayload,
+} from "@/lib/recovery";
 import type { EventState, SettlementPub, Transfer } from "@/lib/types";
 
 export default function SettleTab({
@@ -33,10 +46,15 @@ export default function SettleTab({
   const myBalance = state.balances.find((b) => b.memberId === me);
   const net = myBalance?.netCents ?? 0;
 
-  const pending = state.settlements.filter((s) => s.status === "pending");
+  const pending = useMemo(
+    () => state.settlements.filter((s) => s.status === "pending"),
+    [state.settlements],
+  );
   const confirmQueue = pending.filter((s) => s.to === me);
   const waiting = pending.filter((s) => s.from === me);
   const history = state.settlements.filter((s) => s.status !== "pending");
+  const paymentOptions = eligiblePaymentMembers(state, me);
+  const noMoneyActivity = state.expenses.length === 0 && state.settlements.length === 0;
 
   // Pending claims laid over the plan so nobody double-pays.
   const pendingByPair = useMemo(() => {
@@ -53,13 +71,28 @@ export default function SettleTab({
       .filter((t) => t.from === fromId && t.to === me)
       .reduce((sum, t) => sum + t.amountCents, 0);
 
-  async function resolve(sid: string, action: "confirm" | "reject" | "cancel") {
-    setBusyId(sid);
+  async function resolve(
+    settlement: SettlementPub,
+    action: "confirm" | "reject" | "cancel",
+  ) {
+    setBusyId(settlement.id);
     try {
-      await resolveSettlement(state.event.id, sid, action);
+      if (action === "cancel") {
+        const pendingScope = `create-payment:${state.event.id}`;
+        const recovered = loadPendingMutation(pendingScope, isPaymentPayload);
+        if (
+          recovered &&
+          paymentRecoveryMatchesSettlement(recovered.payload, settlement)
+        ) {
+          // Remove the retry before deleting its server-side idempotency row.
+          // If storage is unavailable, aborting the cancel prevents resurrection.
+          clearPendingMutation(pendingScope);
+        }
+      }
+      await resolveSettlement(state.event.id, settlement.id, action);
       await refetch();
       if (action === "confirm") notify("Confirmed. Ledger updated for everyone.");
-      if (action === "reject") notify("Sent back. It stays owed until it's real.");
+      if (action === "reject") notify("Declined. The ledger didn't change.");
       if (action === "cancel") notify("Cancelled.");
     } catch (e) {
       notify(e instanceof Error ? e.message : "Something broke.");
@@ -69,7 +102,21 @@ export default function SettleTab({
   }
 
   const allSquare =
-    state.transfers.length === 0 && pending.length === 0 && state.totalSpentCents > 0;
+    state.balances.every((balance) => balance.netCents === 0) &&
+    pending.length === 0 &&
+    state.totalSpentCents > 0;
+
+  if (noMoneyActivity) {
+    return (
+      <div className="fade-in rounded-2xl border border-dashed border-line px-5 py-8 text-center">
+        <h2 className="font-display text-xl font-bold text-ink">Nothing to settle yet.</h2>
+        <p className="mt-2 text-sm leading-relaxed text-dim">
+          Add the first expense in Spend. The square-up plan will appear here as the
+          party logs purchases.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="fade-in space-y-8">
@@ -137,7 +184,7 @@ export default function SettleTab({
                     <Button
                       small
                       disabled={busyId === s.id}
-                      onClick={() => resolve(s.id, "confirm")}
+                      onClick={() => resolve(s, "confirm")}
                     >
                       Yep, got it
                     </Button>
@@ -145,7 +192,7 @@ export default function SettleTab({
                       small
                       variant="ghost"
                       disabled={busyId === s.id}
-                      onClick={() => resolve(s.id, "reject")}
+                      onClick={() => resolve(s, "reject")}
                     >
                       No they didn&rsquo;t
                     </Button>
@@ -177,8 +224,7 @@ export default function SettleTab({
             The square-up plan{" "}
             <span className="font-normal normal-case text-faint">
               · {state.transfers.length}{" "}
-              {state.transfers.length === 1 ? "payment" : "payments"}, the fewest
-              possible
+              {state.transfers.length === 1 ? "payment" : "payments"}
             </span>
           </SectionTitle>
           <div className="space-y-2">
@@ -189,6 +235,9 @@ export default function SettleTab({
                 me={me}
                 name={name}
                 pendingCents={pendingByPair.get(`${t.from}|${t.to}`) ?? 0}
+                canReceive={state.members.some(
+                  (member) => member.id === t.to && member.canReceivePayment !== false,
+                )}
                 onPay={() => setPaySheet({ to: t.to, suggestCents: t.amountCents })}
               />
             ))}
@@ -212,9 +261,9 @@ export default function SettleTab({
                   <Chip tone="red" className="ml-2">pending</Chip>
                 </div>
                 <button
-                  className="shrink-0 text-xs font-bold text-faint underline"
+                  className="inline-flex min-h-11 shrink-0 items-center px-2 text-xs font-bold text-faint underline"
                   disabled={busyId === s.id}
-                  onClick={() => resolve(s.id, "cancel")}
+                  onClick={() => resolve(s, "cancel")}
                 >
                   cancel
                 </button>
@@ -224,14 +273,23 @@ export default function SettleTab({
         </section>
       )}
 
-      <Button variant="quiet" full onClick={() => setPaySheet({ to: "", suggestCents: 0 })}>
-        Record a payment I made
-      </Button>
+      {paymentOptions.length > 0 ? (
+        <Button variant="quiet" full onClick={() => setPaySheet({ to: "", suggestCents: 0 })}>
+          Record a payment I made
+        </Button>
+      ) : (
+        <div className="rounded-2xl border border-dashed border-line px-5 py-5 text-center">
+          <p className="text-sm text-dim">
+            You&rsquo;re the only person available to pay. Share the party code and
+            approve someone in Crew before recording a payment.
+          </p>
+        </div>
+      )}
 
       {/* ---- History ---- */}
       {history.length > 0 && (
         <section>
-          <SectionTitle>Settled</SectionTitle>
+          <SectionTitle>Payment history</SectionTitle>
           <ul className="space-y-1">
             {history.map((s) => (
               <HistoryRow key={s.id} s={s} name={name} />
@@ -267,12 +325,14 @@ function PlanRow({
   me,
   name,
   pendingCents,
+  canReceive,
   onPay,
 }: {
   t: Transfer;
   me: string;
   name: (id: string) => string;
   pendingCents: number;
+  canReceive: boolean;
   onPay: () => void;
 }) {
   const iOwe = t.from === me;
@@ -296,10 +356,13 @@ function PlanRow({
           {pendingCents > 0 && (
             <Chip tone="red">{formatMoney(pendingCents)} pending confirmation</Chip>
           )}
-          {iOwe && pendingCents === 0 && (
+          {iOwe && pendingCents === 0 && canReceive && (
             <Button small onClick={onPay}>
               I paid this back
             </Button>
+          )}
+          {iOwe && pendingCents === 0 && !canReceive && (
+            <Chip tone="dim">Departed · can&rsquo;t confirm payments</Chip>
           )}
         </div>
       )}
@@ -318,10 +381,19 @@ function HistoryRow({
   return (
     <li className="flex items-center gap-3 px-2 py-2 text-sm">
       <span className={`min-w-0 flex-1 ${rejected ? "text-faint" : "text-dim"}`}>
-        <span className="font-bold">{name(s.from)}</span> paid{" "}
-        <span className="font-bold">{name(s.to)}</span>{" "}
-        <Money cents={s.amountCents} className="font-bold" />
-        {rejected ? ", declined" : ""}
+        {rejected ? (
+          <>
+            <span className="font-bold">{name(s.from)}</span>&rsquo;s reported payment to{" "}
+            <span className="font-bold">{name(s.to)}</span> of{" "}
+            <Money cents={s.amountCents} className="font-bold" /> was declined
+          </>
+        ) : (
+          <>
+            <span className="font-bold">{name(s.from)}</span> paid{" "}
+            <span className="font-bold">{name(s.to)}</span>{" "}
+            <Money cents={s.amountCents} className="font-bold" />
+          </>
+        )}
         <span className="text-faint">
           {" "}· {timeAgo(s.resolvedAt ?? s.createdAt)}
         </span>
@@ -357,17 +429,31 @@ function RecordPaymentSheet({
     suggestCents > 0 ? (suggestCents / 100).toFixed(2) : "",
   );
   const [busy, setBusy] = useState(false);
+  const [retryLocked, setRetryLocked] = useState(false);
+  const requestId = useRef<string | null>(null);
+  const requestPayload = useRef<PaymentPayload | null>(null);
+  const pendingScope = `create-payment:${state.event.id}`;
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      try {
+        const pending = loadPendingMutation(pendingScope, isPaymentPayload);
+        if (!pending) return;
+        requestId.current = pending.requestId;
+        requestPayload.current = pending.payload;
+        setTo(pending.payload.to);
+        setAmount(pending.payload.amount);
+        setRetryLocked(true);
+      } catch (err) {
+        notify(err instanceof Error ? err.message : "Couldn't restore a saved payment retry.");
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [notify, pendingScope]);
 
   // People you can pay back: anyone in the room, or anyone who left but is
   // still on the ledger. Never yourself.
-  const balanceIds = new Set(state.balances.map((b) => b.memberId));
-  const options = state.members.filter(
-    (m) =>
-      m.id !== me &&
-      m.status !== "pending" &&
-      m.status !== "denied" &&
-      (m.status === "active" || balanceIds.has(m.id)),
-  );
+  const options = eligiblePaymentMembers(state, me);
 
   const cents = parseMoney(amount);
   const owed = state.transfers
@@ -379,11 +465,47 @@ function RecordPaymentSheet({
     if (!cents || !to) return;
     setBusy(true);
     try {
-      await createSettlement(state.event.id, to, cents);
+      if (!requestId.current || !requestPayload.current) {
+        requestId.current = newRequestId();
+        requestPayload.current = { to, amount, amountCents: cents };
+        savePendingMutation(pendingScope, {
+          requestId: requestId.current,
+          payload: requestPayload.current,
+        });
+      }
+      const payload = requestPayload.current;
+      await createSettlement(
+        state.event.id,
+        payload.to,
+        payload.amountCents,
+        requestId.current,
+      );
       await refetch();
+      try {
+        clearPendingMutation(pendingScope);
+      } catch {
+        // Retaining the same recovery UUID cannot duplicate the saved payment.
+      }
       onClose();
       notify("Sent. It counts once they confirm.");
     } catch (err) {
+      if (mutationMayHaveCommitted(err)) {
+        const payload = requestPayload.current;
+        if (payload) {
+          setTo(payload.to);
+          setAmount(payload.amount);
+        }
+        setRetryLocked(true);
+      } else {
+        try {
+          clearPendingMutation(pendingScope);
+          requestId.current = null;
+          requestPayload.current = null;
+          setRetryLocked(false);
+        } catch {
+          setRetryLocked(true);
+        }
+      }
       notify(err instanceof Error ? err.message : "Couldn't record that.");
       setBusy(false);
     }
@@ -392,25 +514,27 @@ function RecordPaymentSheet({
   const toName = state.members.find((m) => m.id === to)?.name;
 
   return (
-    <Sheet open onClose={onClose} title="I paid someone back">
+    <Sheet open onClose={onClose} title="I paid someone back" preventClose={busy}>
       <form onSubmit={submit} className="space-y-4">
-        <Field label="Who">
+        <FieldGroup label="Who">
           <div className="flex flex-wrap gap-2">
             {options.map((m) => (
               <button
                 key={m.id}
                 type="button"
+                aria-pressed={to === m.id}
+                disabled={busy || retryLocked}
                 onClick={() => setTo(m.id)}
-                className={`rounded-full px-4 py-2 text-sm font-bold transition-colors ${
+                className={`min-h-11 rounded-full px-4 text-sm font-bold transition-colors disabled:opacity-50 ${
                   to === m.id ? "bg-ink text-void" : "border border-line text-dim"
                 }`}
               >
                 {m.name}
-                {m.status !== "active" ? " (left)" : ""}
+                {m.status !== "active" ? " (outside party)" : ""}
               </button>
             ))}
           </div>
-        </Field>
+        </FieldGroup>
         <Field label="How much (cash, Venmo, whatever, this just records it)">
           <div className="relative">
             <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-lg font-bold text-faint">
@@ -423,6 +547,7 @@ function RecordPaymentSheet({
               inputMode="decimal"
               className="pl-9 text-lg font-bold tnum"
               required
+              disabled={busy || retryLocked}
             />
           </div>
         </Field>
@@ -432,16 +557,33 @@ function RecordPaymentSheet({
         {cents && to && owed > 0 && cents > owed && (
           <p className="text-sm text-dim">
             That&rsquo;s more than the {formatMoney(owed)} the plan says you owe{" "}
-            {toName}. Still fine, it all nets out once they confirm.
+            {toName}. If they confirm it, the ledger will show the difference owed
+            back.
+          </p>
+        )}
+        {retryLocked && (
+          <p className="text-sm text-dim">
+            This payment may already be waiting for confirmation. Keep these
+            details unchanged and retry once to recover it safely.
           </p>
         )}
         <p className="text-xs text-dim">
           Nothing settles until {toName ?? "they"} confirms they got it.
         </p>
         <Button full disabled={busy || !cents || !to}>
-          {busy ? "Recording…" : "Record it"}
+          {busy ? "Recording…" : retryLocked ? "Check & retry" : "Record it"}
         </Button>
       </form>
     </Sheet>
+  );
+}
+
+function eligiblePaymentMembers(state: EventState, me: string) {
+  const balanceIds = new Set(state.balances.map((balance) => balance.memberId));
+  return state.members.filter(
+    (member) =>
+      member.id !== me &&
+      member.canReceivePayment !== false &&
+      (member.status === "active" || balanceIds.has(member.id)),
   );
 }

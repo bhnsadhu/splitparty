@@ -64,6 +64,20 @@ textarea {
   animation: sheet-up 0.22s cubic-bezier(0.32, 0.72, 0.28, 1.04);
 }
 
+/* Keep every field and close action reachable in landscape and above keyboards. */
+.sheet-panel {
+  max-height: calc(100vh - env(safe-area-inset-top) - 0.5rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+@supports (height: 100dvh) {
+  .sheet-panel {
+    max-height: calc(100dvh - env(safe-area-inset-top) - 0.5rem);
+  }
+}
+
 @keyframes fade-in {
   from {
     opacity: 0;

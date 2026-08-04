@@ -2,9 +2,22 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, Field, TextInput, Wordmark } from "@/components/ui";
-import { createEvent } from "@/lib/client";
+import {
+  clearPendingMutation,
+  createEvent,
+  loadPendingMutation,
+  mutationMayHaveCommitted,
+  newRequestId,
+  savePendingMutation,
+} from "@/lib/client";
+import {
+  isCreateEventPayload,
+  type CreateEventPayload,
+} from "@/lib/recovery";
+
+const CREATE_PENDING_SCOPE = "create-event";
 
 export default function NewEvent() {
   const router = useRouter();
@@ -12,15 +25,70 @@ export default function NewEvent() {
   const [displayName, setDisplayName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [retryLocked, setRetryLocked] = useState(false);
+  const requestId = useRef<string | null>(null);
+  const requestPayload = useRef<CreateEventPayload | null>(null);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      try {
+        const pending = loadPendingMutation(CREATE_PENDING_SCOPE, isCreateEventPayload);
+        if (!pending) return;
+        requestId.current = pending.requestId;
+        requestPayload.current = pending.payload;
+        setEventName(pending.payload.eventName);
+        setDisplayName(pending.payload.displayName);
+        setRetryLocked(true);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Couldn't restore a saved retry.");
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError(null);
     try {
-      const { eventId } = await createEvent(eventName, displayName);
+      if (!requestId.current || !requestPayload.current) {
+        requestId.current = newRequestId();
+        requestPayload.current = { eventName, displayName };
+        savePendingMutation(CREATE_PENDING_SCOPE, {
+          requestId: requestId.current,
+          payload: requestPayload.current,
+        });
+      }
+      const payload = requestPayload.current;
+      const { eventId } = await createEvent(
+        payload.eventName,
+        payload.displayName,
+        requestId.current,
+      );
+      try {
+        clearPendingMutation(CREATE_PENDING_SCOPE);
+      } catch {
+        // A retained recovery record is safe: the same request remains idempotent.
+      }
       router.push(`/e?id=${eventId}&welcome=1`);
     } catch (err) {
+      if (mutationMayHaveCommitted(err)) {
+        const payload = requestPayload.current;
+        if (payload) {
+          setEventName(payload.eventName);
+          setDisplayName(payload.displayName);
+        }
+        setRetryLocked(true);
+      } else {
+        try {
+          clearPendingMutation(CREATE_PENDING_SCOPE);
+          requestId.current = null;
+          requestPayload.current = null;
+          setRetryLocked(false);
+        } catch {
+          setRetryLocked(true);
+        }
+      }
       setError(err instanceof Error ? err.message : "Something broke. Try again.");
       setBusy(false);
     }
@@ -29,7 +97,7 @@ export default function NewEvent() {
   return (
     <main className="mx-auto min-h-dvh max-w-md px-6 pt-[calc(1.5rem+env(safe-area-inset-top))]">
       <header className="mb-10 flex items-center justify-between">
-        <Link href="/" className="text-sm font-bold text-dim">
+        <Link href="/" className="inline-flex min-h-11 items-center text-sm font-bold text-dim">
           ← back
         </Link>
         <Wordmark />
@@ -52,6 +120,7 @@ export default function NewEvent() {
             maxLength={60}
             autoFocus
             required
+            disabled={busy || retryLocked}
           />
         </Field>
         <Field label="Your name (what the group calls you)">
@@ -61,11 +130,18 @@ export default function NewEvent() {
             placeholder="Priya"
             maxLength={40}
             required
+            disabled={busy || retryLocked}
           />
         </Field>
-        {error && <p className="text-sm font-bold text-red">{error}</p>}
+        {error && <p className="text-sm font-bold text-red" role="alert">{error}</p>}
+        {retryLocked && (
+          <p className="text-sm text-dim">
+            This request may already have reached the party. Keep these details
+            unchanged and retry once to recover it safely.
+          </p>
+        )}
         <Button full disabled={busy || !eventName.trim() || !displayName.trim()}>
-          {busy ? "Setting up…" : "Create & get my code"}
+          {busy ? "Setting up…" : retryLocked ? "Check & retry" : "Create & get my code"}
         </Button>
       </form>
     </main>

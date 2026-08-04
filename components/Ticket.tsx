@@ -15,21 +15,45 @@ export default function Ticket({
   eventName: string;
 }) {
   const [copied, setCopied] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [feedback, setFeedback] = useState<{ message: string; error: boolean } | null>(
+    null,
+  );
 
   // Always the public web URL: inside Capacitor the origin is
   // capacitor://localhost, which would be a dead link for anyone you send it to.
   const link = () =>
-    `${process.env.NEXT_PUBLIC_APP_URL ?? "https://splitparty.vercel.app"}/join?code=${code}`;
+    `${process.env.NEXT_PUBLIC_APP_URL ?? "https://splitparty.vercel.app"}/join/?code=${code}`;
 
-  async function copyLink() {
+  function showFeedback(message: string, error = false) {
+    setFeedback({ message, error });
+    window.setTimeout(() => setFeedback(null), 2600);
+  }
+
+  async function writeLink(): Promise<boolean> {
     try {
       await navigator.clipboard.writeText(link());
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
-    } catch {}
+      return true;
+    } catch {
+      setCopied(false);
+      showFeedback("Couldn't copy the link. You can still share the five-character code.", true);
+      return false;
+    }
+  }
+
+  async function copyLink() {
+    if (busy) return;
+    setBusy(true);
+    const didCopy = await writeLink();
+    if (didCopy) showFeedback("Link copied.");
+    setBusy(false);
   }
 
   async function share() {
+    if (busy) return;
+    setBusy(true);
     const url = link();
     if (navigator.share) {
       try {
@@ -38,10 +62,19 @@ export default function Ticket({
           text: `Join "${eventName}" on SplitParty, code ${code}`,
           url,
         });
+        showFeedback("Share sheet opened.");
+        setBusy(false);
         return;
-      } catch {}
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          setBusy(false);
+          return;
+        }
+      }
     }
-    copyLink();
+    const didCopy = await writeLink();
+    if (didCopy) showFeedback("Sharing wasn't available, so the link was copied instead.");
+    setBusy(false);
   }
 
   return (
@@ -65,11 +98,20 @@ export default function Ticket({
       </div>
 
       <div className="mt-5 grid grid-cols-2 gap-3">
-        <Button variant="quiet" onClick={copyLink}>
+        <Button variant="quiet" disabled={busy} onClick={copyLink}>
           {copied ? "Copied ✓" : "Copy link"}
         </Button>
-        <Button onClick={share}>Share it</Button>
+        <Button disabled={busy} onClick={share}>Share it</Button>
       </div>
+      {feedback && (
+        <p
+          className={`mt-3 text-center text-xs font-bold ${feedback.error ? "text-red" : "text-dim"}`}
+          role={feedback.error ? "alert" : "status"}
+          aria-live="polite"
+        >
+          {feedback.message}
+        </p>
+      )}
     </div>
   );
 }

@@ -3,8 +3,18 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Avatar, Button, Chip, Money, timeAgo } from "@/components/ui";
-import { memberAction as memberActionRpc } from "@/lib/client";
+import {
+  HOME_CACHE_KEY,
+  clearPendingMutation,
+  deleteEvent,
+  loadPendingMutation,
+  memberAction as memberActionRpc,
+} from "@/lib/client";
 import { formatMoney } from "@/lib/money";
+import {
+  createRecoveryMatchesEvent,
+  isCreateEventPayload,
+} from "@/lib/recovery";
 import type { EventState, MemberPub } from "@/lib/types";
 
 export default function CrewTab({
@@ -51,16 +61,53 @@ export default function CrewTab({
     try {
       await memberActionRpc(state.event.id, memberId, action);
       if (action === "leave") {
-        notify("You're out. Settled history stays put.");
+        notify("You're out. Your balance and history stay with the party.");
         router.push("/");
         return;
       }
       await refetch();
       if (action === "approve") notify("They're in.");
       if (action === "deny") notify("Denied.");
-      if (action === "remove") notify("Removed. Their settled history stays.");
+      if (action === "remove") {
+        notify("Removed. Anything they owe or are owed stays in the ledger.");
+      }
     } catch (e) {
       notify(e instanceof Error ? e.message : "Something broke.");
+    } finally {
+      setBusyId(null);
+      setArmed(null);
+    }
+  }
+
+  async function deleteParty() {
+    setBusyId("delete-event");
+    try {
+      const recoveredCreate = loadPendingMutation(
+        "create-event",
+        isCreateEventPayload,
+      );
+      if (
+        recoveredCreate &&
+        createRecoveryMatchesEvent(
+          recoveredCreate.payload,
+          state.event,
+          state.me.name,
+        )
+      ) {
+        // Clear the retry before deleting the event row that owns its request ID.
+        // A storage failure leaves the event intact and gives the host a visible error.
+        clearPendingMutation("create-event");
+      }
+      await deleteEvent(state.event.id);
+      try {
+        localStorage.removeItem(HOME_CACHE_KEY);
+      } catch {
+        // The server deletion succeeded even if local cache storage is unavailable.
+      }
+      notify("Party deleted for everyone.");
+      router.replace("/");
+    } catch (e) {
+      notify(e instanceof Error ? e.message : "Couldn't delete this party.");
     } finally {
       setBusyId(null);
       setArmed(null);
@@ -214,7 +261,7 @@ export default function CrewTab({
                         onClick={() => arm(`remove-${m.id}`, () => memberAction(m.id, "remove"))}
                       >
                         {armed === `remove-${m.id}`
-                          ? `Sure? Remove ${m.name}`
+                          ? `Sure? ${m.name}'s balance stays`
                           : "Remove from party"}
                       </Button>
                     )}
@@ -238,7 +285,21 @@ export default function CrewTab({
             disabled={busyId === me}
             onClick={() => arm("leave", () => memberAction(me, "leave"))}
           >
-            {armed === "leave" ? "Sure? Your settled history stays" : "Leave this party"}
+            {armed === "leave" ? "Sure? Your balance stays" : "Leave this party"}
+          </Button>
+        )}
+        {state.me.isHost && (
+          <Button
+            variant="danger"
+            full
+            disabled={busyId === "delete-event"}
+            onClick={() => arm("delete-event", () => void deleteParty())}
+          >
+            {busyId === "delete-event"
+              ? "Deleting party…"
+              : armed === "delete-event"
+                ? "Sure? Delete it for everyone"
+                : "Delete this party"}
           </Button>
         )}
       </section>

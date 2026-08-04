@@ -8,9 +8,21 @@ import { joinEvent } from "@/lib/client";
 
 export default function JoinPage() {
   return (
-    <Suspense>
+    <Suspense fallback={<JoinLoading />}>
       <JoinForm />
     </Suspense>
+  );
+}
+
+function JoinLoading() {
+  return (
+    <main
+      className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-4 px-6"
+      aria-busy="true"
+    >
+      <Wordmark />
+      <p className="text-sm text-dim">Getting the door ready…</p>
+    </main>
   );
 }
 
@@ -38,7 +50,7 @@ function JoinForm() {
   return (
     <main className="mx-auto min-h-dvh max-w-md px-6 pt-[calc(1.5rem+env(safe-area-inset-top))]">
       <header className="mb-10 flex items-center justify-between">
-        <Link href="/" className="text-sm font-bold text-dim">
+        <Link href="/" className="inline-flex min-h-11 items-center text-sm font-bold text-dim">
           ← back
         </Link>
         <Wordmark />
@@ -77,7 +89,7 @@ function JoinForm() {
             required
           />
         </Field>
-        {error && <p className="text-sm font-bold text-red">{error}</p>}
+        {error && <p className="text-sm font-bold text-red" role="alert">{error}</p>}
         <Button full disabled={busy || code.trim().length < 4 || !displayName.trim()}>
           {busy ? "Knocking…" : "Ask to join"}
         </Button>

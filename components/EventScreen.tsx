@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import CrewTab from "@/components/CrewTab";
 import SettleTab from "@/components/SettleTab";
 import SpendTab from "@/components/SpendTab";
 import Ticket from "@/components/Ticket";
-import { Button, Money, Sheet, Wordmark } from "@/components/ui";
+import { Button, ButtonLink, Money, Sheet, Wordmark } from "@/components/ui";
 import { memberAction as memberActionRpc, resolveSettlement, useEventState } from "@/lib/client";
 import type { EventState, RestrictedState } from "@/lib/types";
 
@@ -24,7 +24,7 @@ export default function EventScreen({
   eventId: string;
   welcome: boolean;
 }) {
-  const { state, error, refetch } = useEventState(eventId);
+  const { state, error, refetch, isRefreshing } = useEventState(eventId);
   const [toast, setToast] = useState<string | null>(null);
 
   const notify = useCallback((msg: string) => {
@@ -35,17 +35,35 @@ export default function EventScreen({
   if (error && (error.status === 404 || error.status === 403)) {
     return (
       <CenteredNote title="You're not in this one.">
-        <Link href="/join" className="block">
-          <Button full>Join with a code</Button>
-        </Link>
+        <ButtonLink href="/join" full>Join with a code</ButtonLink>
+      </CenteredNote>
+    );
+  }
+
+  if (error && !state) {
+    return (
+      <CenteredNote
+        title="We couldn't load this party."
+        body="Check your connection and try again. Nothing in the party has been changed."
+      >
+        <Button full disabled={isRefreshing} onClick={() => void refetch()}>
+          {isRefreshing ? "Trying again…" : "Try again"}
+        </Button>
+        <ButtonLink href="/" variant="ghost" full className="mt-3">
+          Back to my parties
+        </ButtonLink>
       </CenteredNote>
     );
   }
 
   if (!state) {
     return (
-      <main className="mx-auto flex min-h-dvh max-w-md items-center justify-center">
+      <main
+        className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-4 px-6"
+        aria-busy="true"
+      >
         <Wordmark />
+        <p className="text-sm text-dim">Loading the party…</p>
       </main>
     );
   }
@@ -53,9 +71,19 @@ export default function EventScreen({
   return (
     <>
       {toast && (
-        <div className="fade-in fixed left-1/2 top-[calc(1rem+env(safe-area-inset-top))] z-[60] w-[calc(100%-3rem)] max-w-sm -translate-x-1/2 rounded-xl border border-line bg-raised px-4 py-3 text-center text-sm font-bold text-ink shadow-lg">
+        <div
+          className="fade-in fixed left-1/2 top-[calc(1rem+env(safe-area-inset-top))] z-[60] w-[calc(100%-3rem)] max-w-sm -translate-x-1/2 rounded-xl border border-line bg-raised px-4 py-3 text-center text-sm font-bold text-ink shadow-lg"
+          role="status"
+          aria-live="polite"
+        >
           {toast}
         </div>
+      )}
+      {error && (
+        <ConnectionBanner
+          refreshing={isRefreshing}
+          retry={() => void refetch()}
+        />
       )}
       {state.restricted ? (
         <RestrictedView
@@ -90,17 +118,20 @@ function ActiveEvent({
   notify: (msg: string) => void;
 }) {
   const [tab, setTab] = useState<Tab>("spend");
-  const [ticketOpen, setTicketOpen] = useState(false);
-
-  useEffect(() => {
-    if (welcome) setTicketOpen(true);
-  }, [welcome]);
+  const [ticketOpen, setTicketOpen] = useState(welcome);
+  const pendingJoins = state.me.isHost
+    ? state.members.filter((member) => member.status === "pending").length
+    : 0;
 
   return (
     <main className="mx-auto min-h-dvh max-w-md pb-32">
       <header className="sticky top-0 z-40 border-b border-line bg-void/90 px-5 pb-3 pt-[calc(0.9rem+env(safe-area-inset-top))] backdrop-blur">
         <div className="flex items-center gap-3">
-          <Link href="/" aria-label="My parties" className="shrink-0 text-lg text-dim">
+          <Link
+            href="/"
+            aria-label="My parties"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-lg text-dim"
+          >
             ←
           </Link>
           <h1 className="min-w-0 flex-1 truncate font-display text-lg font-bold text-ink">
@@ -108,7 +139,7 @@ function ActiveEvent({
           </h1>
           <button
             onClick={() => setTicketOpen(true)}
-            className="shrink-0 rounded-full bg-ink px-3 py-1.5 font-display text-xs font-black tracking-[0.15em] text-void transition-transform active:scale-95"
+            className="flex min-h-11 shrink-0 items-center rounded-full bg-ink px-3 font-display text-xs font-black tracking-[0.15em] text-void transition-transform active:scale-95"
           >
             {state.event.code}
           </button>
@@ -116,6 +147,17 @@ function ActiveEvent({
       </header>
 
       <div className="px-5 pt-5">
+        {pendingJoins > 0 && tab !== "crew" && (
+          <button
+            type="button"
+            onClick={() => setTab("crew")}
+            className="mb-4 w-full rounded-2xl border border-red/40 bg-red/10 px-4 py-3 text-left text-sm font-bold text-red"
+          >
+            {pendingJoins === 1
+              ? "1 person is waiting at the door →"
+              : `${pendingJoins} people are waiting at the door →`}
+          </button>
+        )}
         {tab === "spend" && (
           <SpendTab
             state={state}
@@ -146,11 +188,16 @@ function ActiveEvent({
             badge={state.pendingForMe}
             onClick={() => setTab("settle")}
           />
-          <TabButton label="Crew" active={tab === "crew"} onClick={() => setTab("crew")} />
+          <TabButton
+            label="Crew"
+            active={tab === "crew"}
+            badge={pendingJoins}
+            onClick={() => setTab("crew")}
+          />
         </div>
       </nav>
 
-      <Sheet open={ticketOpen} onClose={() => setTicketOpen(false)}>
+      <Sheet open={ticketOpen} onClose={() => setTicketOpen(false)} title="Share this party">
         <Ticket code={state.event.code} eventName={state.event.name} />
       </Sheet>
     </main>
@@ -219,6 +266,7 @@ function RestrictedView({
       }
     } catch (e) {
       notify(e instanceof Error ? e.message : "Something broke.");
+    } finally {
       setBusy(false);
     }
   }
@@ -242,11 +290,11 @@ function RestrictedView({
     },
     left: {
       title: "You left this party.",
-      body: "Your confirmed history is safe. Ask to join again and the host can let you back in.",
+      body: "Anything you owe or are owed stays in the ledger. Ask to join again and the host can let you back in.",
     },
     removed: {
       title: "The host removed you from this one.",
-      body: "Anything already settled stays settled. You can ask to join again.",
+      body: "Anything you owe or are owed stays in the ledger. You can ask to join again.",
     },
     denied: {
       title: "The host didn't let you in.",
@@ -295,12 +343,32 @@ function RestrictedView({
           Ask to join again
         </Button>
       )}
-      <Link href="/" className="mt-3 block">
-        <Button variant="ghost" full>
-          Back to my parties
-        </Button>
-      </Link>
+      <ButtonLink href="/" variant="ghost" full className="mt-3">
+        Back to my parties
+      </ButtonLink>
     </CenteredNote>
+  );
+}
+
+function ConnectionBanner({
+  refreshing,
+  retry,
+}: {
+  refreshing: boolean;
+  retry: () => void;
+}) {
+  return (
+    <div
+      className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-1/2 z-50 flex w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 items-center gap-3 rounded-2xl border border-red/40 bg-raised px-4 py-3 shadow-lg"
+      role="alert"
+    >
+      <p className="min-w-0 flex-1 text-sm text-ink">
+        Couldn&rsquo;t refresh. You&rsquo;re seeing the last loaded party details.
+      </p>
+      <Button small variant="quiet" disabled={refreshing} onClick={retry}>
+        {refreshing ? "Trying…" : "Retry"}
+      </Button>
+    </div>
   );
 }
 

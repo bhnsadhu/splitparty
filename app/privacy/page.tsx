@@ -10,7 +10,7 @@ export default function PrivacyPage() {
   return (
     <main className="mx-auto min-h-dvh max-w-md px-6 pb-[calc(2.5rem+env(safe-area-inset-bottom))] pt-[calc(1.5rem+env(safe-area-inset-top))]">
       <header className="mb-10 flex items-center justify-between">
-        <Link href="/" className="text-sm font-bold text-dim">
+        <Link href="/" className="inline-flex min-h-11 items-center text-sm font-bold text-dim">
           ← back
         </Link>
         <Wordmark />
@@ -19,35 +19,46 @@ export default function PrivacyPage() {
       <h1 className="font-display text-3xl font-black leading-tight text-ink">
         Privacy
       </h1>
-      <p className="mt-2 text-sm text-faint">Last updated July 6, 2026</p>
+      <p className="mt-2 text-sm text-faint">Last updated August 4, 2026</p>
 
       <div className="mt-8 space-y-6 leading-relaxed text-dim">
         <Section title="What SplitParty stores">
           <p>
-            SplitParty has no accounts, no passwords, and no profiles. When you use
-            the app it stores exactly this, and nothing else:
+            SplitParty has no accounts, passwords, or advertising profiles. To run
+            your shared ledger, the app stores:
           </p>
           <ul className="mt-3 list-disc space-y-1.5 pl-5">
             <li>
-              A random device ID generated on your phone. It identifies this device
-              inside your parties. It is not your name, phone number, email, or
-              advertising ID, and it can&rsquo;t be traced back to you.
+              A random ID generated and stored on this device. SplitParty sends it
+              with app requests so the service can find your memberships. It is not
+              your phone number, email address, or advertising ID, and other party
+              members cannot see it.
             </li>
             <li>The display name you type when you create or join a party.</li>
             <li>Party names and their join codes.</li>
             <li>
               The money activity you and your group log: what got bought, amounts,
-              who paid, and payment confirmations.
+              who paid, payment confirmations, and the timestamps and status needed
+              to keep that history consistent.
+            </li>
+            <li>
+              If a create, expense, or payment request is interrupted, its random
+              request ID and frozen form details stay on this device until the app
+              can safely confirm or retry that same request.
             </li>
           </ul>
         </Section>
 
         <Section title="Where it lives">
           <p>
-            That data is stored in a Supabase database so everyone in your party
-            sees the same ledger. It is visible only to members of the same party.
-            Your device ID never leaves the database, other members can&rsquo;t see
-            it.
+            Party data is stored in a Supabase database so everyone in the same party
+            sees one ledger. A small cache of your party list, safe-retry details,
+            and your random device ID are also stored on this device. Vercel serves SplitParty&rsquo;s public
+            web, invitation, and privacy pages. These providers may process ordinary
+            technical request information to host and operate the service. The full
+            ledger is returned only to approved members of the same party; limited
+            payment-confirmation details may remain available when someone leaves so
+            the group can close out. Device IDs are never returned to other members.
           </p>
         </Section>
 
@@ -55,19 +66,20 @@ export default function PrivacyPage() {
           <ul className="list-disc space-y-1.5 pl-5">
             <li>No analytics, no ads, no trackers.</li>
             <li>No tracking across other apps or websites.</li>
-            <li>No selling or sharing data with anyone.</li>
+            <li>No selling data or sharing it for advertising.</li>
+            <li>SplitParty uses Supabase and Vercel to host and operate the service.</li>
             <li>No contacts, location, camera, or photo access.</li>
           </ul>
         </Section>
 
         <Section title="Deleting your data">
           <p>
-            The button below erases you from SplitParty: your device identity, your
-            memberships in every party, and any parties you host that no one else
-            has money history in. Where your name appears in another group&rsquo;s
-            confirmed ledger, the entry stays but is renamed
-            &ldquo;Departed&rdquo; and unlinked from your device, so their math
-            still adds up without pointing at you.
+            The button below removes this device&rsquo;s SplitParty identity and its
+            membership access. Where a ledger must keep an old expense or confirmed
+            payment so the group&rsquo;s totals still add up, the entry is unlinked from
+            your device and renamed &ldquo;Departed.&rdquo; Hosts who want to erase an
+            entire party for everyone can use &ldquo;Delete this party&rdquo; in Crew
+            before deleting their personal data.
           </p>
         </Section>
 
@@ -121,15 +133,16 @@ function DeleteMyData() {
         Delete my data
       </h2>
       <p className="mt-2 text-sm text-dim">
-        Wipes this device&rsquo;s identity and removes you from every party.
-        There&rsquo;s no undo.
+        Wipes this device&rsquo;s identity and removes you from every party. If you
+        host a party, first approve an active member who can take it over or use
+        &ldquo;Delete this party&rdquo; in Crew. There&rsquo;s no undo.
       </p>
-      {error && <p className="mt-3 text-sm font-bold text-red">{error}</p>}
+      {error && <p className="mt-3 text-sm font-bold text-red" role="alert">{error}</p>}
       <Button variant="danger" full className="mt-4" disabled={busy} onClick={wipe}>
         {busy
           ? "Deleting…"
           : armed
-            ? "Sure? This erases everything"
+            ? "Sure? Remove my identity"
             : "Delete my data"}
       </Button>
     </div>

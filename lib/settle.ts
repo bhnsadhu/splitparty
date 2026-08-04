@@ -8,6 +8,8 @@ interface ExpenseIn {
   id: string;
   paidBy: string;
   amountCents: number;
+  /** Immutable expense roster. Missing only for legacy server responses. */
+  participantIds?: string[];
 }
 interface SettlementIn {
   from: string;
@@ -32,12 +34,15 @@ export interface Ledger {
  * The whole ledger in one pass, all integer cents.
  *
  * Rules:
- * - Every expense splits evenly across members who are currently ACTIVE.
- *   Leftover pennies go to a rotating subset (seeded by expense id) so no
- *   one systematically eats the remainder. Shares always sum exactly to the
+ * - Every expense splits evenly across the immutable participant snapshot
+ *   captured when it was logged. Legacy responses without that snapshot fall
+ *   back to the current active roster until the database migration is applied.
+ * - Leftover pennies go to a rotating subset (seeded by expense id) so no one
+ *   systematically eats the remainder. Shares always sum exactly to the
  *   expense amount, so all nets sum to exactly zero.
- * - Members who left/were removed keep their paid expenses and confirmed
- *   settlements (history is never rewritten) but take no share of costs.
+ * - Members who leave or are removed keep their original shares, paid
+ *   expenses, and confirmed settlements. Membership changes never rewrite
+ *   financial history.
  * - Only CONFIRMED settlements move balances. Pending ones are display-only
  *   until the receiver approves.
  * - net > 0: the group owes them. net < 0: they owe the group.
@@ -51,8 +56,6 @@ export function computeLedger(
     .filter((m) => m.status === "active")
     .map((m) => m.id)
     .sort();
-  const n = activeIds.length;
-
   const paid = new Map<string, number>();
   const share = new Map<string, number>();
   const sent = new Map<string, number>();
@@ -64,12 +67,19 @@ export function computeLedger(
   for (const e of expenses) {
     totalSpentCents += e.amountCents;
     bump(paid, e.paidBy, e.amountCents);
-    if (n === 0) continue;
-    const base = Math.floor(e.amountCents / n);
-    const remainder = e.amountCents - base * n;
-    const offset = seedFromId(e.id) % n;
-    for (let k = 0; k < n; k++) {
-      const memberId = activeIds[(offset + k) % n];
+    // Missing or empty snapshots can only come from a legacy/malformed row;
+    // use the prior active-roster behavior so a visible ledger stays zero-sum.
+    const snapshotIds = Array.isArray(e.participantIds)
+      ? [...new Set(e.participantIds)].sort()
+      : [];
+    const participantIds = snapshotIds.length > 0 ? snapshotIds : activeIds;
+    const participantCount = participantIds.length;
+    if (participantCount === 0) continue;
+    const base = Math.floor(e.amountCents / participantCount);
+    const remainder = e.amountCents - base * participantCount;
+    const offset = seedFromId(e.id) % participantCount;
+    for (let k = 0; k < participantCount; k++) {
+      const memberId = participantIds[(offset + k) % participantCount];
       bump(share, memberId, base + (k < remainder ? 1 : 0));
     }
   }
@@ -98,8 +108,13 @@ export function computeLedger(
     .filter((b) => {
       const m = members.find((mm) => mm.id === b.memberId)!;
       if (m.status === "active") return true;
-      // Ghosts stay on the ledger only while they still matter financially.
-      return b.paidCents !== 0 || b.sentCents !== 0 || b.recvCents !== 0;
+      // Ghosts stay on the ledger while any immutable history references them.
+      return (
+        b.paidCents !== 0 ||
+        b.shareCents !== 0 ||
+        b.sentCents !== 0 ||
+        b.recvCents !== 0
+      );
     });
 
   return { balances, transfers: minTransfers(balances), totalSpentCents };
@@ -107,8 +122,9 @@ export function computeLedger(
 
 /**
  * Greedy debt simplification: repeatedly match the largest debtor with the
- * largest creditor. Produces at most (participants - 1) payments and always
- * zeroes every balance exactly, in cents.
+ * largest creditor. Produces a deterministic compact plan of at most
+ * (participants - 1) payments and always zeroes every balance exactly in cents.
+ * It does not claim the globally minimum transaction count.
  */
 export function minTransfers(balances: Balance[]): Transfer[] {
   const creditors = balances

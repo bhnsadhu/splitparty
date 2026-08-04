@@ -1,10 +1,37 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Avatar, Button, Field, Money, Sheet, TextInput, timeAgo } from "@/components/ui";
-import { addExpense } from "@/lib/client";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Avatar, Button, Field, FieldGroup, Money, Sheet, TextInput, timeAgo } from "@/components/ui";
+import {
+  addExpense,
+  clearPendingMutation,
+  loadPendingMutation,
+  mutationMayHaveCommitted,
+  newRequestId,
+  savePendingMutation,
+} from "@/lib/client";
 import { parseMoney } from "@/lib/money";
 import type { EventState } from "@/lib/types";
+
+type ExpensePayload = {
+  label: string;
+  amount: string;
+  amountCents: number;
+  paidBy: string;
+};
+
+const isExpensePayload = (value: unknown): value is ExpensePayload => {
+  if (!value || typeof value !== "object") return false;
+  const payload = value as Record<string, unknown>;
+  return (
+    typeof payload.label === "string" && payload.label.length <= 80 &&
+    typeof payload.amount === "string" && payload.amount.length <= 32 &&
+    typeof payload.amountCents === "number" &&
+    Number.isSafeInteger(payload.amountCents) &&
+    payload.amountCents > 0 && payload.amountCents <= 100_000_000 &&
+    typeof payload.paidBy === "string" && payload.paidBy.length > 0
+  );
+};
 
 export default function SpendTab({
   state,
@@ -22,8 +49,6 @@ export default function SpendTab({
     () => new Map(state.members.map((m) => [m.id, m.name])),
     [state.members],
   );
-  const activeMembers = state.members.filter((m) => m.status === "active");
-
   return (
     <div className="fade-in">
       {state.pendingForMe > 0 && (
@@ -45,8 +70,7 @@ export default function SpendTab({
           <Money cents={state.totalSpentCents} />
         </p>
         <p className="mt-2 text-sm text-dim">
-          split evenly between {activeMembers.length}{" "}
-          {activeMembers.length === 1 ? "person" : "people"}
+          each purchase stays split across the crew who was in then
         </p>
       </section>
 
@@ -108,8 +132,31 @@ function AddExpenseSheet({
   const [amount, setAmount] = useState("");
   const [paidBy, setPaidBy] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [retryLocked, setRetryLocked] = useState(false);
+  const requestId = useRef<string | null>(null);
+  const requestPayload = useRef<ExpensePayload | null>(null);
 
   const me = state.me.memberId;
+  const pendingScope = `add-expense:${state.event.id}`;
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      try {
+        const pending = loadPendingMutation(pendingScope, isExpensePayload);
+        if (!pending) return;
+        requestId.current = pending.requestId;
+        requestPayload.current = pending.payload;
+        setLabel(pending.payload.label);
+        setAmount(pending.payload.amount);
+        setPaidBy(pending.payload.paidBy === me ? null : pending.payload.paidBy);
+        setRetryLocked(true);
+      } catch (err) {
+        notify(err instanceof Error ? err.message : "Couldn't restore a saved expense retry.");
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [me, notify, pendingScope]);
+
   const payerId = paidBy ?? me;
   // Me first, then the rest of the room.
   const payers = [...state.members.filter((m) => m.status === "active")].sort(
@@ -122,14 +169,55 @@ function AddExpenseSheet({
     if (!cents) return;
     setBusy(true);
     try {
-      await addExpense(state.event.id, label, cents, payerId);
+      if (!requestId.current || !requestPayload.current) {
+        requestId.current = newRequestId();
+        requestPayload.current = { label, amount, amountCents: cents, paidBy: payerId };
+        savePendingMutation(pendingScope, {
+          requestId: requestId.current,
+          payload: requestPayload.current,
+        });
+      }
+      const payload = requestPayload.current;
+      await addExpense(
+        state.event.id,
+        payload.label,
+        payload.amountCents,
+        payload.paidBy,
+        requestId.current,
+      );
       await refetch();
       setLabel("");
       setAmount("");
       setPaidBy(null);
+      requestId.current = null;
+      requestPayload.current = null;
+      setRetryLocked(false);
+      try {
+        clearPendingMutation(pendingScope);
+      } catch {
+        // Retaining the same recovery UUID cannot duplicate the saved expense.
+      }
       onClose();
       notify("Logged. Everyone can see it.");
     } catch (err) {
+      if (mutationMayHaveCommitted(err)) {
+        const payload = requestPayload.current;
+        if (payload) {
+          setLabel(payload.label);
+          setAmount(payload.amount);
+          setPaidBy(payload.paidBy === me ? null : payload.paidBy);
+        }
+        setRetryLocked(true);
+      } else {
+        try {
+          clearPendingMutation(pendingScope);
+          requestId.current = null;
+          requestPayload.current = null;
+          setRetryLocked(false);
+        } catch {
+          setRetryLocked(true);
+        }
+      }
       notify(err instanceof Error ? err.message : "Couldn't log it.");
     } finally {
       setBusy(false);
@@ -137,7 +225,7 @@ function AddExpenseSheet({
   }
 
   return (
-    <Sheet open={open} onClose={onClose} title="What got bought?">
+    <Sheet open={open} onClose={onClose} title="What got bought?" preventClose={busy}>
       <form onSubmit={submit} className="space-y-4">
         <Field label="The thing">
           <TextInput
@@ -146,6 +234,7 @@ function AddExpenseSheet({
             placeholder="Cake, balloons, 3 pizzas…"
             maxLength={80}
             required
+            disabled={busy || retryLocked}
           />
         </Field>
         <Field label="How much">
@@ -160,17 +249,20 @@ function AddExpenseSheet({
               inputMode="decimal"
               className="pl-9 text-lg font-bold tnum"
               required
+              disabled={busy || retryLocked}
             />
           </div>
         </Field>
-        <Field label="Who paid">
+        <FieldGroup label="Who paid">
           <div className="flex flex-wrap gap-2">
             {payers.map((m) => (
               <button
                 key={m.id}
                 type="button"
+                aria-pressed={payerId === m.id}
+                disabled={busy || retryLocked}
                 onClick={() => setPaidBy(m.id)}
-                className={`rounded-full px-4 py-2 text-sm font-bold transition-colors ${
+                className={`min-h-11 rounded-full px-4 text-sm font-bold transition-colors disabled:opacity-50 ${
                   payerId === m.id
                     ? "bg-ink text-void"
                     : "border border-line text-dim"
@@ -180,14 +272,26 @@ function AddExpenseSheet({
               </button>
             ))}
           </div>
-        </Field>
+        </FieldGroup>
         {amount && !cents && (
           <p className="text-sm font-bold text-red">
             Amounts look like 12 or 12.50.
           </p>
         )}
+        {retryLocked && (
+          <p className="text-sm text-dim">
+            This may already be logged. Keep these details unchanged and retry
+            once to recover the same expense safely.
+          </p>
+        )}
         <Button full disabled={busy || !cents || !label.trim()}>
-          {busy ? "Logging…" : cents ? `Log it, $${(cents / 100).toFixed(2)}` : "Log it"}
+          {busy
+            ? "Logging…"
+            : retryLocked
+              ? "Check & retry"
+              : cents
+                ? `Log it, $${(cents / 100).toFixed(2)}`
+                : "Log it"}
         </Button>
       </form>
     </Sheet>

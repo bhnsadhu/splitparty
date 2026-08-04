@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import Link from "next/link";
+import { useEffect, useRef } from "react";
 import { formatMoney } from "@/lib/money";
 
 /* ---------- Button ---------- */
@@ -17,6 +18,26 @@ const buttonStyles: Record<ButtonVariant, string> = {
   quiet: "bg-surface text-ink font-bold hover:bg-line/60 disabled:opacity-40",
 };
 
+function buttonClassName({
+  variant,
+  small,
+  full,
+  className,
+}: {
+  variant: ButtonVariant;
+  small: boolean;
+  full: boolean;
+  className: string;
+}) {
+  return [
+    "inline-flex items-center justify-center rounded-2xl text-center transition-transform active:scale-[0.97] disabled:active:scale-100",
+    small ? "h-11 px-4 text-sm" : "h-14 px-6 text-base",
+    full ? "w-full" : "",
+    buttonStyles[variant],
+    className,
+  ].join(" ");
+}
+
 export function Button({
   variant = "primary",
   small = false,
@@ -31,13 +52,26 @@ export function Button({
   return (
     <button
       {...props}
-      className={[
-        "rounded-2xl transition-transform active:scale-[0.97] disabled:active:scale-100",
-        small ? "h-10 px-4 text-sm" : "h-14 px-6 text-base",
-        full ? "w-full" : "",
-        buttonStyles[variant],
-        className,
-      ].join(" ")}
+      className={buttonClassName({ variant, small, full, className })}
+    />
+  );
+}
+
+export function ButtonLink({
+  variant = "primary",
+  small = false,
+  full = false,
+  className = "",
+  ...props
+}: React.ComponentProps<typeof Link> & {
+  variant?: ButtonVariant;
+  small?: boolean;
+  full?: boolean;
+}) {
+  return (
+    <Link
+      {...props}
+      className={buttonClassName({ variant, small, full, className })}
     />
   );
 }
@@ -71,6 +105,21 @@ export function Field({
   );
 }
 
+export function FieldGroup({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <fieldset>
+      <legend className="mb-1.5 text-sm font-medium text-dim">{label}</legend>
+      {children}
+    </fieldset>
+  );
+}
+
 export function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
@@ -90,37 +139,96 @@ export function Sheet({
   open,
   onClose,
   title,
+  preventClose = false,
   children,
 }: {
   open: boolean;
   onClose: () => void;
   title?: string;
+  preventClose?: boolean;
   children: React.ReactNode;
 }) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const frame = window.requestAnimationFrame(() => closeRef.current?.focus());
+    return () => {
+      window.cancelAnimationFrame(frame);
+      previouslyFocused?.focus();
+    };
+  }, [open]);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && !preventClose) onClose();
+      if (e.key !== "Tab") return;
+
+      const focusable = Array.from(
+        panelRef.current?.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ) ?? [],
+      );
+      if (focusable.length === 0) {
+        e.preventDefault();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && (document.activeElement === first || !panelRef.current?.contains(document.activeElement))) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
+    const previousOverflow = document.body.style.overflow;
     document.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
     return () => {
       document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
+      document.body.style.overflow = previousOverflow;
     };
-  }, [open, onClose]);
+  }, [open, onClose, preventClose]);
 
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label={title}>
+    <div
+      className="fixed inset-0 z-50"
+      role="dialog"
+      aria-modal="true"
+      aria-label={title ?? "Dialog"}
+      aria-busy={preventClose || undefined}
+    >
       <button
-        aria-label="Close"
+        aria-hidden="true"
+        tabIndex={-1}
         className="fade-in absolute inset-0 w-full bg-black/60"
-        onClick={onClose}
+        disabled={preventClose}
+        onClick={() => {
+          if (!preventClose) onClose();
+        }}
       />
-      <div className="sheet-in absolute bottom-0 left-1/2 w-full max-w-md -translate-x-1/2 rounded-t-3xl border-t border-line bg-raised p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
+      <div
+        ref={panelRef}
+        className="sheet-panel sheet-in absolute bottom-0 left-1/2 w-full max-w-md -translate-x-1/2 rounded-t-3xl border-t border-line bg-raised p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]"
+      >
+        <button
+          ref={closeRef}
+          type="button"
+          aria-label="Close dialog"
+          disabled={preventClose}
+          onClick={onClose}
+          className="absolute right-4 top-3 flex h-11 w-11 items-center justify-center rounded-full text-xl text-dim hover:bg-line/40 disabled:opacity-30"
+        >
+          ×
+        </button>
         {title && (
-          <h2 className="mb-4 font-display text-lg font-bold text-ink">{title}</h2>
+          <h2 className="mb-4 pr-12 font-display text-lg font-bold text-ink">{title}</h2>
         )}
         {children}
       </div>

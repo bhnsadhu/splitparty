@@ -17,7 +17,7 @@ const grotesk = Space_Grotesk({
 export const metadata: Metadata = {
   title: "SplitParty, split the damage",
   description:
-    "Log who paid for what. SplitParty does the math and squares everyone up in the fewest payments possible. No accounts, just a code.",
+    "Log who paid for what. SplitParty does the math and gives everyone a clear way to square up. No accounts, just a code.",
 };
 
 export const viewport: Viewport = {
