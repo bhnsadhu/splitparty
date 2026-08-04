@@ -1,5 +1,6 @@
 -- Applied to the live project on 2026-07-06 (as `client_rpcs_and_rls_lockdown`
--- + `delete_my_data_guest_order`). Kept in-repo as the source of record.
+-- + `delete_my_data_guest_order`). Kept in-repo as the replayable source of
+-- record; the historical follow-up version is represented by the marker file.
 --
 -- Moves all app logic into SECURITY DEFINER RPCs so the Capacitor/static
 -- client talks to Postgres directly without ever seeing other members'

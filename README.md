@@ -93,10 +93,11 @@ The native marketing version and build number live in the Xcode project.
 
 For the `20260804180000` release migration:
 
-1. Restore the Supabase project and verify its actual schema and migration
-   history first. The `20260706160000` file is a source-of-record copy of SQL
-   previously applied under different dashboard names; do not blindly run
-   `supabase db push` until remote history is reconciled.
+1. Verify the linked migration history first. Production and the local
+   directory should both contain `20260703033851`, `20260706160609`, and
+   `20260706161708`, with only `20260804180000` pending. Confirm that shape with
+   `supabase migration list --linked` and `supabase db push --dry-run` before
+   applying anything.
 2. Audit every event with no active real member. The release migration aborts
    instead of inventing an owner or writing an empty financial snapshot:
 

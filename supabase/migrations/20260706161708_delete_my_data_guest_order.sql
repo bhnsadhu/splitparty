@@ -1,0 +1,6 @@
+-- Historical migration marker.
+--
+-- The live project recorded the guest-order deletion follow-up under this
+-- version. Its final function definition is folded into the preceding
+-- replayable source-of-record migration so a fresh database reaches the same
+-- schema while the local version history remains aligned with production.

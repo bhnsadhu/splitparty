@@ -71,6 +71,12 @@ alter table public.expenses
   alter column participant_ids set default array[]::uuid[],
   alter column participant_ids set not null;
 
+-- The live project may already contain this constraint when a dashboard-run
+-- migration is subsequently reconciled with migration history. Recreate it so
+-- that replay is safe and the history repair cannot double-apply a constraint.
+alter table public.expenses
+  drop constraint if exists expenses_participant_ids_nonempty;
+
 alter table public.expenses
   add constraint expenses_participant_ids_nonempty
   check (cardinality(participant_ids) > 0);
