@@ -8,6 +8,8 @@
 -- Apply this migration as one transaction. Take the final DDL lock mode up
 -- front with NOWAIT so an in-flight legacy poll aborts this transaction instead
 -- of creating a cross-table lock cycle. Quiesce traffic, then retry on 55P03.
+begin;
+
 lock table public.events, public.members, public.expenses, public.settlements
   in access exclusive mode nowait;
 
@@ -904,3 +906,5 @@ grant execute on function public.sp_delete_event(text, uuid) to anon;
 -- Make newly added overloads visible to PostgREST before the web deploy that
 -- immediately follows this transaction.
 notify pgrst, 'reload schema';
+
+commit;
