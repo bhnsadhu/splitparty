@@ -1,0 +1,14 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run build:web",
+  "crons": [
+    {
+      "path": "/api/keepalive/",
+      "schedule": "0 12 * * 0"
+    },
+    {
+      "path": "/api/keepalive/",
+      "schedule": "0 12 * * 3"
+    }
+  ]
+}

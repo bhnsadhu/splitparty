@@ -24,7 +24,38 @@ The host approves new members before they can see the ledger.
 - Event state refreshes every three seconds while the app is visible.
 - Money is always represented as integer cents.
 
-There is no Next.js runtime server and there are no application API routes.
+The app itself has no Next.js runtime server and no application API routes: every
+screen talks to Supabase directly. The single exception is `/api/keepalive`,
+which exists only on the Vercel web deploy and serves no product feature. See
+[Supabase keepalive](#supabase-keepalive).
+
+## Supabase keepalive
+
+Supabase pauses free-tier projects after 7 days without real database activity.
+Web traffic does not count; a query has to reach Postgres. A paused database
+previously broke an App Store review build, so two independent schedules keep it
+warm:
+
+| Trigger | Schedule (UTC) | Path |
+| --- | --- | --- |
+| Vercel cron (`vercel.json`) | Sun + Wed 12:00 | `/api/keepalive/` |
+| GitHub Actions (`.github/workflows/keepalive.yml`) | Mon + Thu 06:00 | Supabase REST directly |
+
+Four pings a week, longest gap ~3.25 days. The two paths share no
+infrastructure, so a broken deploy or a Vercel incident cannot disable both. Both
+call `sp_my_events` with a synthetic device ID that matches no real member, so
+the query is read-only and touches no real data.
+
+Two details are load-bearing:
+
+- The cron path keeps its **trailing slash**. `trailingSlash: true` makes
+  `/api/keepalive` a 308 redirect, and Vercel cron following redirects is not
+  documented.
+- The route file is `route.web.ts`, not `route.ts`. `pageExtensions` in
+  `next.config.ts` only registers `*.web.ts` for the web build, which keeps the
+  route out of the static export. A dynamic route handler is illegal under
+  `output: "export"`, and a static one would bake its response at build time and
+  never reach Postgres.
 
 ## Ledger guarantees
 
@@ -66,6 +97,18 @@ npm run build
 `npm test` runs TypeScript tests matching `tests/*.test.ts` with Node's built-in
 test runner. After a build, `npm start` previews the static export at
 `http://localhost:3000` using Python 3's standard-library HTTP server.
+
+`npm run build` is the static export used by Capacitor and is what the iOS flow
+below expects. `npm run build:web` sets `SP_WEB_BUILD=1` to build the Vercel
+deploy instead, which drops `output: "export"` and adds the `/api/keepalive`
+function; `vercel.json` pins it as the project's build command. To exercise the
+route locally:
+
+```bash
+npm run build:web
+SP_WEB_BUILD=1 npx next start -p 3100
+curl http://localhost:3100/api/keepalive/
+```
 
 The two scripts in `scripts/e2e*.mjs` exercise live Supabase RPCs and require
 explicit `SUPABASE_URL` and `SUPABASE_KEY` values. Local Supabase hosts run

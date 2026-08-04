@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:web": "SP_WEB_BUILD=1 next build",
     "preview": "python3 -m http.server 3000 --directory out",
     "start": "npm run preview",
     "lint": "eslint",

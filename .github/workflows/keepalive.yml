@@ -1,0 +1,69 @@
+name: Supabase keepalive
+
+# Second, independent guard against Supabase free-tier auto-pause (7 idle days).
+# This deliberately does NOT go through the Vercel route in vercel.json -- it
+# calls Postgres directly, so a broken deploy, a failed build, or a Vercel
+# incident cannot take out both triggers at once.
+#
+# Combined schedule: Vercel hits Sun + Wed 12:00 UTC, this hits Mon + Thu 06:00
+# UTC. Four pings a week, longest gap ~3.25 days, well inside the 7-day window
+# even if a run is skipped.
+#
+# Caveat: GitHub disables scheduled workflows after 60 days with no repository
+# activity. It emails first, and any push re-enables them.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+    - cron: "0 6 * * 4"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-keepalive
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Query Supabase
+        env:
+          # Falls back to the publishable anon values that already ship in the
+          # web bundle and the iOS binary, so the workflow cannot silently stop
+          # working just because repository secrets were never configured.
+          # All table access is behind SECURITY DEFINER sp_* RPCs.
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://chkymwkafaljedtlrqoa.supabase.co' }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY || 'sb_publishable_oOhF3ge6yDhOEjn-JPrafg_8Ghf3B0q' }}
+        run: |
+          set -euo pipefail
+
+          # sp_my_events is STABLE and read-only. This device id matches the
+          # sp_check_device format but cannot collide with a real device, so the
+          # call reads no real rows and always returns [].
+          body=$(mktemp)
+          code=$(curl -sS --fail-with-body \
+            --retry 3 --retry-delay 10 --retry-all-errors \
+            --max-time 30 \
+            -o "$body" -w '%{http_code}' \
+            -X POST "$SUPABASE_URL/rest/v1/rpc/sp_my_events" \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"p_device_id":"keepalive-probe-do-not-use"}')
+
+          echo "HTTP $code"
+          echo "Body: $(cat "$body")"
+
+          # A 200 from PostgREST means the request was planned and executed by
+          # Postgres. Assert the shape too, so an edge/proxy error page or an
+          # auth failure can never be mistaken for a successful keepalive.
+          if [ "$code" != "200" ] || [ "$(cat "$body")" != "[]" ]; then
+            echo "::error::Keepalive did not reach Postgres (HTTP $code)"
+            exit 1
+          fi
+
+          echo "Keepalive query reached Postgres."
