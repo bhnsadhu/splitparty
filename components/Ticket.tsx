@@ -23,7 +23,7 @@ export default function Ticket({
   // Always the public web URL: inside Capacitor the origin is
   // capacitor://localhost, which would be a dead link for anyone you send it to.
   const link = () =>
-    `${process.env.NEXT_PUBLIC_APP_URL ?? "https://splitparty.vercel.app"}/join/?code=${code}`;
+    `${process.env.NEXT_PUBLIC_APP_URL ?? "https://splitparty-bhanu-sadhu-s-projects.vercel.app"}/join/?code=${code}`;
 
   function showFeedback(message: string, error = false) {
     setFeedback({ message, error });
