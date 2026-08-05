@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { Capacitor } from "@capacitor/core";
+import { Clipboard } from "@capacitor/clipboard";
+import { Share } from "@capacitor/share";
 import { Button } from "@/components/ui";
 
 /**
@@ -30,9 +33,19 @@ export default function Ticket({
     window.setTimeout(() => setFeedback(null), 2600);
   }
 
+  // Plain text, always. On iOS, navigator.clipboard.writeText does not put a bare
+  // string on the pasteboard: WebKit also stamps com.apple.WebKit.custom-pasteboard-data
+  // (a binary plist) and, because the string parses as a URL, public.url. Apps that
+  // read the first type they find paste "bplist00..." instead of the link. The native
+  // clipboard writes UIPasteboard.general.string -- one item, public.utf8-plain-text.
   async function writeLink(): Promise<boolean> {
     try {
-      await navigator.clipboard.writeText(link());
+      const url = link();
+      if (Capacitor.isNativePlatform()) {
+        await Clipboard.write({ string: url });
+      } else {
+        await navigator.clipboard.writeText(url);
+      }
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
       return true;
@@ -51,25 +64,33 @@ export default function Ticket({
     setBusy(false);
   }
 
+  // Same rule as the clipboard: share one plain string. Handing the share sheet a
+  // separate `url` makes it an NSURL activity item, so "Copy" from the sheet puts a
+  // URL object on the pasteboard and plain text fields show binary instead of a link.
   async function share() {
     if (busy) return;
     setBusy(true);
-    const url = link();
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: "SplitParty",
-          text: `Join "${eventName}" on SplitParty, code ${code}`,
-          url,
-        });
+    const message = `Join "${eventName}" on SplitParty, code ${code}\n${link()}`;
+    try {
+      if (Capacitor.isNativePlatform()) {
+        await Share.share({ title: "SplitParty", text: message });
         showFeedback("Share sheet opened.");
         setBusy(false);
         return;
-      } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError") {
-          setBusy(false);
-          return;
-        }
+      }
+      if (navigator.share) {
+        await navigator.share({ title: "SplitParty", text: message });
+        showFeedback("Share sheet opened.");
+        setBusy(false);
+        return;
+      }
+    } catch (error) {
+      const aborted =
+        (error instanceof DOMException && error.name === "AbortError") ||
+        (error instanceof Error && /cancell?ed/i.test(error.message));
+      if (aborted) {
+        setBusy(false);
+        return;
       }
     }
     const didCopy = await writeLink();
