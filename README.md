@@ -1,169 +1,208 @@
 # SplitParty
 
-**Split the damage.** SplitParty is a mobile-first group-expense ledger for
-events. There are no accounts: a random device identifier stored on the device
-represents the participant, and a five-character party code is the only way in.
-The host approves new members before they can see the ledger.
+**Split the damage.** SplitParty is a mobile-first ledger for group expenses:
+log what everyone spent on a trip or a night out, and it computes exactly who
+owes whom, splitting to the cent and compressing the payback into the fewest
+practical transfers instead of a tangle of everyone-pays-everyone.
 
-## Product flow
+No accounts, no email, no password. A device identifier and a five-character
+party code are the entire identity model.
 
-- Start a party and share its code or canonical `/join/?code=XXXXX` link.
-- Friends join and wait at the door until the host approves them.
-- Active members log expenses, which are split evenly to the cent.
-- SplitParty computes a deterministic repayment plan.
-- A recorded payment remains pending until its receiver confirms or rejects it.
+## Status
 
-## Architecture
+- **Web:** live at [splitparty-bhanu-sadhu-s-projects.vercel.app](https://splitparty-bhanu-sadhu-s-projects.vercel.app)
+- **iOS:** the native Capacitor build is **currently in Apple's App Store review
+  process**. It is not approved or published yet.
 
-- Next.js App Router and Tailwind CSS, exported as static files into `out/`.
-- Capacitor copies `out/` into the native iOS project and serves it on-device.
-- The browser client calls narrowly scoped Supabase Postgres RPCs directly.
-- The Supabase **publishable** key is expected to ship in the client. Table RLS,
-  RPC grants, and server-side authorization remain the security boundary.
-- Anonymous identity is a localStorage device UUID passed to every RPC.
-- Event state refreshes every three seconds while the app is visible.
-- Money is always represented as integer cents.
+This is a real product being shipped to a real store, not a tutorial clone. The
+sections below describe decisions a reviewer can check by reading the code.
 
-The app itself has no Next.js runtime server and no application API routes: every
-screen talks to Supabase directly. The single exception is `/api/keepalive`,
-which exists only on the Vercel web deploy and serves no product feature. See
-[Supabase keepalive](#supabase-keepalive).
+## What makes this technically interesting
 
-## Supabase keepalive
+### The settlement algorithm
 
-Supabase pauses free-tier projects after 7 days without real database activity.
-Web traffic does not count; a query has to reach Postgres. A paused database
-previously broke an App Store review build, so two independent schedules keep it
-warm:
+`computeLedger` in [lib/settle.ts](lib/settle.ts) does the whole ledger in one
+pass over integer cents, then compresses the debt graph.
 
-| Trigger | Schedule (UTC) | Path |
-| --- | --- | --- |
-| Vercel cron (`vercel.json`) | Sun + Wed 12:00 | `/api/keepalive/` |
-| GitHub Actions (`.github/workflows/keepalive.yml`) | Mon + Thu 06:00 | Supabase REST directly |
+- **Exact splits, no drift.** Each expense splits across the participant
+  roster snapshotted at the time it was logged. Leftover pennies rotate to a
+  subset chosen by a seed derived from the expense UUID, so nobody
+  systematically eats the remainder. Shares always sum to the expense exactly,
+  which means all nets sum to exactly zero. A $100.00 three-way split produces
+  3334 / 3333 / 3333 cents, not three roundings that lose a penny.
+- **Debt simplification, not pairwise IOUs.** `minTransfers` repeatedly matches
+  the largest debtor against the largest creditor, producing at most
+  `participants - 1` payments that zero every balance exactly. The doc comment
+  is explicit that this is a greedy result and does not claim the globally
+  minimum transaction count, because the exact version is NP-hard and the
+  greedy bound is what actually ships.
+- **Deterministic across devices.** Sorting is stable and UUID-tiebroken, so
+  every client renders the identical settlement plan from the same data. The
+  test suite asserts this by recomputing the ledger with members, expenses, and
+  settlements all reversed and requiring byte-identical transfers.
+- **Immutable history.** Members who leave or are removed keep their original
+  shares, the expenses they paid, and their confirmed settlements. Membership
+  changes never rewrite financial history, and departed members with a nonzero
+  footprint stay visible on the ledger as ghosts.
+- **Fuzzed.** [tests/settle.test.ts](tests/settle.test.ts) runs 5,000
+  seeded random scenarios asserting three invariants every time: shares sum to
+  total spend, nets sum to zero, and the emitted transfer plan actually settles
+  every balance.
 
-Four pings a week, longest gap ~3.25 days. The two paths share no
-infrastructure, so a broken deploy or a Vercel incident cannot disable both. Both
-call `sp_my_events` with a synthetic device ID that matches no real member, so
-the query is read-only and touches no real data.
+### The security model
 
-Two details are load-bearing:
+The app is a static export talking straight to Supabase from the browser and
+from inside the iOS binary, so the publishable key is public by definition.
+The security boundary is therefore in Postgres, not in the client.
 
-- The cron path keeps its **trailing slash**. `trailingSlash: true` makes
-  `/api/keepalive` a 308 redirect, and Vercel cron following redirects is not
-  documented.
-- The route file is `route.web.ts`, not `route.ts`. `pageExtensions` in
-  `next.config.ts` only registers `*.web.ts` for the web build, which keeps the
-  route out of the static export. A dynamic route handler is illegal under
-  `output: "export"`, and a static one would bake its response at build time and
-  never reach Postgres.
+- **Zero direct table access.** Every table is revoked from `anon` and
+  `authenticated`, plus RLS enabled as defense in depth. See
+  [the lockdown migration](supabase/migrations/20260706160609_client_rpcs_and_rls_lockdown.sql).
+- **All logic lives in `SECURITY DEFINER` RPCs** with `set search_path = public,
+  pg_temp`. The client can call exactly ten `sp_*` functions and nothing else.
+  Internal helpers like `sp_check_device` are explicitly revoked, so they are
+  not reachable even though they exist in the same schema.
+- **Authorization is re-derived server side on every call.** The client passes a
+  device ID; the RPC looks up the member row itself. There is no client-supplied
+  role, host flag, or member ID that the database trusts.
+- **Verified, not assumed.** [scripts/e2e.mjs](scripts/e2e.mjs) asserts that a
+  direct table read is denied and that internal helper RPCs are unreachable.
+  Against the live project, the anon key returns **HTTP 401 with Postgres error
+  42501** on `events`, `members`, `expenses`, `settlements`, and on
+  `sp_check_device`. The same script checks that an unrelated device gets a
+  `notMember` response for someone else's event and is rejected outright when it
+  tries to write an expense into it.
+- **Race-safe under concurrency.** Mutating RPCs lock the parent `events` row
+  first, then lock member rows in UUID order and **reload them** before
+  authorizing. That ordering is deliberate: it closes the stale-host window and
+  prevents lock inversion between membership changes and money writes. See
+  `sp_member_action` in
+  [the latest migration](supabase/migrations/20260804180000_immutable_expense_participants_and_safe_cleanup.sql).
 
-## Ledger guarantees
+### Host-approval join flow
 
-- Expense shares sum exactly to the expense; leftover pennies rotate
-  deterministically by expense ID.
-- Only confirmed settlements change balances.
-- Event, expense, and payment retries reuse client request IDs. Uncertain
-  requests and their frozen payloads persist on-device across reload/relaunch,
-  so a response timeout does not create duplicate rows after the release
-  migration is applied.
-- Departed members keep paid expenses and confirmed history, take no new share,
-  and lose pending claims.
-- Deterministic sorting gives every client the same settlement plan.
+Joining a party does not grant access to it.
 
-## Local setup
+- `sp_join_event` inserts new members as `pending`, never `active`.
+- A pending member's `sp_event_state` returns a restricted payload: no roster,
+  no expenses, no balances. `sp_my_events` reports zeroed aggregates for them,
+  so the waiting screen cannot leak the party's spend total.
+- Only an `active` host can approve or deny, enforced in SQL rather than by
+  hiding a button.
+- The full state machine is `pending`, `active`, `denied`, `left`, `removed`,
+  with a `rerequest` transition back to `pending`. Each transition is a
+  conditional `UPDATE` whose row count is checked, so a double tap or a
+  concurrent host action raises "already handled" instead of silently
+  double-applying.
 
-Node.js 22.15 or newer is required for the TypeScript-aware built-in test runner
-and its ESM resolution hook.
+### Two-party payment confirmation
+
+Recording a payment does not move money.
+
+- A settlement is created `pending` by the payer and only counts once the
+  **receiver** confirms it. `computeLedger` skips anything that is not
+  `confirmed`.
+- `sp_resolve_settlement` scopes confirm and reject to `to_member = me` and
+  cancel to `from_member = me`, so neither party can resolve the other's side.
+- Leaving or being removed deletes that member's pending claims but leaves
+  every confirmed settlement intact.
+
+### Production hardening
+
+- **One codebase, two build targets.** `npm run build` emits a pure static
+  export into `out/` for Capacitor. `npm run build:web` opts out of
+  `output: "export"` for the Vercel deploy. The keepalive route is named
+  `route.web.ts` and registered through `pageExtensions` only in the web build,
+  which keeps it out of the static export entirely. Without that split the iOS
+  build fails, because a dynamic route handler is illegal under `output:
+  "export"` and a static one would bake its response at build time.
+- **Safe area handling throughout.** `viewportFit: "cover"` plus
+  `env(safe-area-inset-*)` on every screen chrome, header, bottom nav, toast,
+  and bottom sheet, so nothing lands under the notch or the home indicator.
+  Inputs are pinned to 16px because anything smaller triggers iOS auto-zoom.
+- **Idempotent mutations.** Create, expense, and settlement RPCs take a client
+  request ID. Uncertain requests and their frozen payloads persist in
+  localStorage across reload and relaunch, so a response timeout retries with
+  the same UUID instead of creating a duplicate row. A retry with a changed
+  payload under an already-used request ID is rejected.
+- **Guaranteed uptime on the free tier.** Supabase pauses free projects after 7
+  idle days, and web traffic does not count; a query has to reach Postgres. A
+  paused database previously broke an App Store review build, so two
+  **independent** schedules keep it warm:
+
+  | Trigger | Schedule (UTC) | Path |
+  | --- | --- | --- |
+  | Vercel cron ([vercel.json](vercel.json)) | Sun + Wed 12:00 | `/api/keepalive/` |
+  | GitHub Actions ([keepalive.yml](.github/workflows/keepalive.yml)) | Mon + Thu 06:00 | Supabase REST directly |
+
+  Four pings a week, longest gap about 3.25 days. The two paths share no
+  infrastructure, so a failed build or a Vercel incident cannot disable both.
+  Both call a read-only RPC with a synthetic device ID that matches no real
+  member, and the workflow asserts the response body is `[]` so an edge error
+  page can never be mistaken for a successful ping. The cron path keeps its
+  trailing slash on purpose, since `trailingSlash: true` makes
+  `/api/keepalive` a 308 and Vercel cron redirect-following is undocumented.
+
+## Tech stack
+
+| Layer | Choice |
+| --- | --- |
+| App | Next.js 16 (App Router), React 19, TypeScript |
+| Styling | Tailwind CSS v4 |
+| Data | Supabase Postgres, accessed only through `SECURITY DEFINER` RPCs |
+| iOS | Capacitor 8, native Xcode project in [ios/](ios/) |
+| Web hosting | Vercel, plus Vercel Cron for the keepalive |
+| CI | GitHub Actions |
+| Tests | Node's built-in test runner, no test framework dependency |
+
+There is no Next.js runtime server and no application API routes. Every screen
+talks to Supabase directly. The single exception is `/api/keepalive`, which
+exists only on the web deploy and serves no product feature.
+
+Money is integer cents everywhere, from the Postgres column to the React state
+to the formatter in [lib/money.ts](lib/money.ts). Floats never touch a balance.
+
+## Getting started locally
+
+Node.js 22.15 or newer is required, for the TypeScript-aware built-in test
+runner and its ESM resolution hook.
 
 ```bash
+git clone https://github.com/bhnsadhu/splitparty.git
+cd splitparty
 npm ci
 cp .env.example .env.local
 npm run dev
 ```
 
-Fill `.env.local` with the production or isolated development project as
-appropriate. Only use a Supabase publishable key. Never place a secret or
-service-role key in any `NEXT_PUBLIC_*` variable.
+Point `.env.local` at your own Supabase project or an isolated development one.
+Use only a Supabase **publishable** key. Never put a secret or service-role key
+in a `NEXT_PUBLIC_*` variable.
 
-## Verification
+To provision the schema, apply the migrations in
+[supabase/migrations/](supabase/migrations/) in filename order.
+
+### Checks
 
 ```bash
 npm run lint
 npm run typecheck
-npm test
-npm run build
+npm test        # 18 tests, including the 5,000-scenario ledger fuzz
+npm run build   # static export into ./out
+npm start       # preview the export at http://localhost:3000
 ```
 
-`npm test` runs TypeScript tests matching `tests/*.test.ts` with Node's built-in
-test runner. After a build, `npm start` previews the static export at
-`http://localhost:3000` using Python 3's standard-library HTTP server.
+`scripts/e2e.mjs` and `scripts/e2e2.mjs` run the full multi-device flow against
+a configured Supabase backend: create, join, approve, expense, settle, confirm,
+reject, cancel, leave. They create a temporary party and delete it afterward.
 
-`npm run build` is the static export used by Capacitor and is what the iOS flow
-below expects. `npm run build:web` sets `SP_WEB_BUILD=1` to build the Vercel
-deploy instead, which drops `output: "export"` and adds the `/api/keepalive`
-function; `vercel.json` pins it as the project's build command. To exercise the
-route locally:
-
-```bash
-npm run build:web
-SP_WEB_BUILD=1 npx next start -p 3100
-curl http://localhost:3100/api/keepalive/
-```
-
-The two scripts in `scripts/e2e*.mjs` exercise live Supabase RPCs and require
-explicit `SUPABASE_URL` and `SUPABASE_KEY` values. Local Supabase hosts run
-directly; any remote host also requires `SPLITPARTY_E2E_ALLOW_REMOTE=1`, and the
-known production project requires the stronger
-`SPLITPARTY_E2E_ALLOW_PRODUCTION=I_UNDERSTAND_THIS_MUTATES_PRODUCTION`
-acknowledgement. The scripts create real rows and perform best-effort cleanup in
-both their success and caught-error paths, but a force-killed process can still
-leave records behind.
-
-## iOS release flow
+### iOS
 
 ```bash
 npm run build
 npm run ios:sync
-xcodebuild -project ios/App/App.xcodeproj \
-  -scheme App -configuration Release \
-  -destination 'generic/platform=iOS' \
-  CODE_SIGNING_ALLOWED=NO build
+open ios/App/App.xcodeproj
 ```
 
-`out/`, `ios/App/App/public/`, and generated Capacitor configuration are ignored.
-Always build before syncing, and always sync before compiling or archiving iOS.
-The native marketing version and build number live in the Xcode project.
-
-For the `20260804180000` release migration:
-
-1. Verify the linked migration history first. Production and the local
-   directory should both contain `20260703033851`, `20260706160609`, and
-   `20260706161708`, with only `20260804180000` pending. Confirm that shape with
-   `supabase migration list --linked` and `supabase db push --dry-run` before
-   applying anything.
-2. Audit every event with no active real member. The release migration aborts
-   instead of inventing an owner or writing an empty financial snapshot:
-
-   ```sql
-   select e.id, e.code
-   from public.events e
-   where not exists (
-     select 1 from public.members m
-     where m.event_id = e.id and m.status = 'active'
-       and m.device_id not like '%:guest:%'
-   );
-   ```
-
-3. Quiesce client traffic and apply only the new migration as one transaction.
-   Its initial `ACCESS EXCLUSIVE ... NOWAIT` lock intentionally aborts with
-   `55P03` if a poll is still in flight; retry only after traffic is quiet.
-4. Deploy the web export immediately after the migration, then ship the new iOS
-   binary. The old RPC signatures remain callable during cutover, but old web or
-   native code ignores immutable `participantIds` and is not ledger-compatible
-   after membership changes. Confirm no old public native build is in use and
-   retire cached/test builds.
-
-Party invitation links use `NEXT_PUBLIC_APP_URL`. Before a release, deploy the
-same web build to that HTTPS origin and verify `/`, `/new/`, `/join/?code=XXXXX`,
-and `/privacy/` directly. App Store archives, signing, provisioning, TestFlight,
-and the public privacy URL still require human verification in Apple and Vercel.
+`cap sync` copies `out/` into the native project. The app ships as
+`com.bhanusadhu.splitparty`.
