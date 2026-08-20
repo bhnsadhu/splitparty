@@ -10,7 +10,7 @@ party code are the entire identity model.
 
 ## Status
 
-- **Web:** live at [splitparty-bhanu-sadhu-s-projects.vercel.app](https://splitparty-bhanu-sadhu-s-projects.vercel.app)
+- **Web:** live at [https://getsplitparty.vercel.app/](https://getsplitparty.vercel.app/)
 - **iOS:** the native Capacitor build is **currently in Apple's App Store review
   process**. It is not approved or published yet.
 
